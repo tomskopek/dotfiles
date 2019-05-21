@@ -1,0 +1,40 @@
+[core]
+	excludesfile = /Users/tom/.gitignore_global
+[difftool "sourcetree"]
+	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
+	path = 
+[mergetool "sourcetree"]
+	cmd = /Applications/SourceTree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
+	trustExitCode = true
+[user]
+	name = tomskopek
+	email = tomskopek@gmail.com
+[commit]
+	template = /Users/tom/.stCommitMsg
+[grep]
+	extendRegexp = true
+[push]
+  default = current
+[alias]
+  b = branch -a
+  ec = config --global -e
+  s = status
+  undowip = "!f() { if (git log --pretty=format:"%s" | head -1 | grep -q '^WIP$'); then git undo; fi }; f"
+  co = !git wip || true && git fetch && git checkout $1 && git undowip
+  cob = checkout -b
+  pul = !git fetch && git pull --rebase --prune $@
+  pu = !git wip || true && git pul && git undowip
+  pp = !git pu && git push
+  cm = !git add -A && git commit -m
+
+  pr = !hub pull-request | pbcopy
+
+  save = !git add -A && git commit -m "SAVEPOINT"
+  wip = !git add -A && git commit -m "WIP"
+  undo = reset HEAD~1 --mixed
+  amend = commit -a --amend
+
+  wipe = !git add -A && git commit -qm 'WIPE SAVEPOINT' && git reset HEAD~1 --hard
+
+# Git graph
+  ll = log --graph --pretty=format:"%C(bold\\ blue)%h%Creset\\ %ad\\ %s\\ %C(red)%d%C(reset)\\ %C(bold\\ blue)<%an>%C(reset)" --date=relative
