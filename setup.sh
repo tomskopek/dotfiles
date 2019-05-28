@@ -12,6 +12,7 @@
 
 # install powerline font: https://github.com/powerline/fonts
 # set iterm2 to have powerline font (profiles > text > change font)
+# I'm using 12pt Meslo LG M Regular for Powerline
 
 echo "Starting setup"
 
@@ -29,13 +30,16 @@ PACKAGES=(
     git
     node
     npm
+    python3
     the_silver_searcher
+    ripgrep
+    fzf
     tmux
     vim
     neovim
     zsh
     wget
-    fzf
+    curl
 )
 
 echo "Installing packages..."
@@ -70,6 +74,13 @@ FONTS=(
 )
 
 brew cask install ${FONTS[@]}
+
+echo "Installing pynvim (python3 support for vim for deoplete)..."
+pip3 install --user pynvim
+
+echo "Configuring git..."
+git config --global user.email "tomskopek@gmail.com"
+git config --global user.name "tomskopek"
 
 echo "Configuring OSX..."
 
