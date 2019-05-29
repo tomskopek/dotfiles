@@ -2,7 +2,7 @@
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
 
 # Path to your oh-my-zsh installation.
-export ZSH=/Users/tom/.oh-my-zsh
+export ZSH=~/.oh-my-zsh
 
 # Set name of the theme to load. Optionally, if you set this to "random"
 # it'll load a random theme each time that oh-my-zsh is loaded.
@@ -96,6 +96,12 @@ alias ys='yarn start'
 # quattro evaluat_on_inspect = true
 export QUATTRO_INSPECT="true"
 
+# ------------ lane stuff ---------------
+alias ldev='cd ~/dev/lane-next/'
+alias lmob='cd ~/dev/lane-next/lane-mobile'
+alias ios='cd ~/dev/lane-next/lane-mobile/ios'
+alias and='cd ~/dev/lane-next/lane-mobile/android'
+
 # ------------ path stuff ---------------
 
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
@@ -112,6 +118,7 @@ export PATH="/usr/local/opt/icu4c/sbin:$PATH"
 
 # android
 export ANDROID_HOME=$HOME/Library/Android/sdk
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home
 export PATH=$PATH:$ANDROID_HOME/emulator
 export PATH=$PATH:$ANDROID_HOME/tools
 export PATH=$PATH:$ANDROID_HOME/tools/bin
@@ -135,3 +142,8 @@ NVM_DIR="$HOME/.nvm"
 # --glob: Additional conditions for search (in this case ignore everything in the .git/ folder)
 export FZF_DEFAULT_COMMAND='rg --files --hidden -i --follow --glob "!.git/*"'
 # export FZF_DEFAULT_COMMAND='rg --files --no-ignore --hidden -i --follow --glob "!.git/*"'
+#
+#
+# export APP_ENV="staging"
+export APP_ENV="development"
+export NODE_ENV="development"
