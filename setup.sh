@@ -82,6 +82,9 @@ echo "Configuring git..."
 git config --global user.email "tomskopek@gmail.com"
 git config --global user.name "tomskopek"
 
+echo "Cloning tpm (tmux plugin manager)"
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+
 echo "Configuring OSX..."
 
 # Set fast key repeat rate
