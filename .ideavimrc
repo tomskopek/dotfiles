@@ -1,0 +1,15 @@
+set clipboard+=unnamed
+set commentary
+set surround
+
+set visualbell
+set noerrorbells " Turn off annoying error bell sound
+set ignorecase " Search doesn't care about case
+set incsearch " Jump to search match without hitting enter
+set hls " Better highlight color
+
+let mapleader = " "
+
+nmap <leader>x :action CloseContent<CR>
+nmap <leader>g :action GotoDeclaration<CR>
+nmap \ :action FindInPath<CR>
