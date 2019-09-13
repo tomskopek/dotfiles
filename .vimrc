@@ -47,7 +47,10 @@ Plug 'tpope/vim-rails'
 Plug 'alvan/vim-closetag'
 " Git
 Plug 'tpope/vim-fugitive'
+Plug 'tommcdo/vim-fubitive'
 Plug 'tpope/vim-rhubarb'
+" Syntax
+Plug 'sheerun/vim-polyglot'
 " Style
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
@@ -67,6 +70,7 @@ Plug 'ap/vim-css-color'
 Plug 'prettier/vim-prettier', {
   \ 'do': 'yarn install',
   \ 'for': ['javascript', 'typescript', 'css', 'less', 'scss', 'json', 'graphql', 'markdown', 'vue', 'yaml', 'html'] }
+Plug 'w0rp/ale'
 
 " === deoplete ===
 if has('nvim')
@@ -101,8 +105,7 @@ if !exists("g:syntax_on")
   syntax enable
 endif
 
-" Change leader to a comma because the backslash is too far away
-" The mapleader has to be set before vundle starts loading all the plugins.
+" Change leader to a space
 let mapleader=" "
 set timeout timeoutlen=1500
 
@@ -197,8 +200,10 @@ set list listchars=tab:\ \ ,trail:·  "Display tabs and trailing spaces visually
 set nowrap       "Don't wrap lines
 set linebreak    "Wrap lines at convenient points
 
+" ================ Intendation ============================
+
 autocmd Filetype ruby setlocal ts=2 sts=2 sw=2
-autocmd Filetype javascript setlocal ts=4 sts=4 sw=4
+autocmd Filetype javascript setlocal ts=2 sts=2 sw=2
 
 " ================ NERDTree ===============================
 
@@ -225,7 +230,7 @@ let NERDTreeShowHidden=1
 
 " ================ Prettier =========================================
 
-let g:prettier#config#semi = 'false'
+" let g:prettier#config#semi = 'false'
 
 " ================ Fzf with ripgrep =================================
 "
@@ -247,7 +252,7 @@ let g:prettier#config#semi = 'false'
 " command! -bang -nargs=* Find call fzf#vim#grep('rg --ignore-case'.shellescape(<q-args>), 1, {'options': '-i'}, <bang>0)
 
 
-"THIS SETUP FROM THE DOCS:
+""THIS SETUP FROM THE DOCS:
 command! -bang -nargs=* Rg
   \ call fzf#vim#grep(
   \   'rg --column --line-number --no-heading --color=always --smart-case '.shellescape(<q-args>), 1,
@@ -263,6 +268,19 @@ if executable('ag')
   let g:ags_agcontext = 4
   let g:ags_agmaxcount = 500
 endif
+
+" let g:ags_agexe = 'rg'
+
+" let g:ags_agargs = {
+"   \ '--column'         : ['', ''],
+"   \ '--line-number'    : ['', ''],
+"   \ '--context'        : ['g:ags_agcontext', '-C'],
+"   \ '--max-count'      : ['g:ags_agmaxcount', ''],
+"   \ '--heading'        : ['',''],
+"   \ '--smart-case'     : ['','-S'],
+"   \ '--color'          : ['always',''],
+"   \ '--colors'         : ['"match:fg:green" --colors="match:bg:black" --colors="match:style:nobold" --colors="path:fg:red" --colors="path:style:bold" --colors="line:fg:black" --colors="line:style:bold"',''],
+"   \ }
 
 if has('nvim')
   let g:ags_enable_async = 1
@@ -314,6 +332,11 @@ let g:fzf_colors =
 
 " <TAB>: completion.
 inoremap <expr><TAB>  pumvisible() ? "\<C-n>" : "\<TAB>"
+
+" ================ ALE ===================================
+
+nnoremap <leader>at :ALEToggle<CR>
+
 
 " ================ Airline ===============================
 
@@ -453,13 +476,16 @@ nnoremap K <nop>
 inoremap ı binding.pry
 " alt + shift + l
 inoremap Ò console.log(
+nnoremap <leader>cll iconsole.log()<Esc><S-f>(a
+nnoremap <leader>clt iconsole.log(`---@---  <C-R>=expand("%:t:r")<CR>`)<Esc><S-f>@a
+nnoremap <leader>clo iconsole.log(`---@<C-R>=expand("%:t")<CR>---`)<Esc>oconsole.log()<Esc><S-f>(a
+
 iabbrev dbg debugger;
 iabbrev ipdb import ipdb; ipdb.set_trace()
 " nnoremap <leader>ev :e $MYVIMRC<CR>
 nnoremap <leader>ev :e ~/.vimrc<CR>
 nnoremap <leader>sv :source ~/.vimrc<CR>
 nnoremap <leader>et :e ~/.tmux.conf<CR>
-iabbrev cl. console.log(
 
 " Pull filename into clipboard
 nnoremap <silent> <Leader>yf :let @+=expand("%:p")<CR>

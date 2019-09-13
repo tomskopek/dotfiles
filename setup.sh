@@ -14,6 +14,13 @@
 # set iterm2 to have powerline font (profiles > text > change font)
 # I'm using 12pt Meslo LG M Regular for Powerline
 
+# migrate from vim to nvim with 
+# touch ~/.config/nvim/init.vim
+# add this to your new init.vim file
+# set runtimepath^=~/.vim runtimepath+=~/.vim/after
+# let &packpath = &runtimepath
+# source ~/.vimrc
+
 echo "Starting setup"
 
 # Check for Homebrew,
