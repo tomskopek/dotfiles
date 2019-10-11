@@ -15,11 +15,14 @@
 # I'm using 12pt Meslo LG M Regular for Powerline
 
 # migrate from vim to nvim with 
+# cd ~/.config && mkdir nvim
 # touch ~/.config/nvim/init.vim
-# add this to your new init.vim file
+# add these three lines to your new init.vim file
+#---
 # set runtimepath^=~/.vim runtimepath+=~/.vim/after
 # let &packpath = &runtimepath
 # source ~/.vimrc
+#---
 
 echo "Starting setup"
 
