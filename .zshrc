@@ -97,10 +97,20 @@ alias ys='yarn start'
 export QUATTRO_INSPECT="true"
 
 # ------------ lane stuff ---------------
-alias ldev='cd ~/dev/lane-next/'
-alias lmob='cd ~/dev/lane-next/lane-mobile'
-alias ios='cd ~/dev/lane-next/lane-mobile/ios'
-alias and='cd ~/dev/lane-next/lane-mobile/android'
+alias lne='cd ~/dev/lane/lane-next/'
+alias lmo='cd ~/dev/lane/lane-next/lane-mobile'
+alias lwe='cd ~/dev/lane/lane-next/lane-web'
+alias lse='cd ~/dev/lane/lane-next/lane-server'
+alias ios='cd ~/dev/lane/lane-next/lane-mobile/ios'
+alias and='cd ~/dev/lane/lane-next/lane-mobile/android'
+alias yslw='yarn start-less-watch'
+
+export APP_ENV="local"
+export NODE_ENV="local"
+export HUSKY_SKIP_HOOKS="true"
+
+# ------------ autosuggest --------------
+bindkey '^ ' autosuggest-accept
 
 # ------------ path stuff ---------------
 
@@ -129,8 +139,6 @@ NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-bindkey '^ ' autosuggest-accept
-
 # ------------- fzf ---------------------
 
 # set rtp+=/usr/local/opt/fzf
@@ -142,10 +150,8 @@ bindkey '^ ' autosuggest-accept
 # -i: ignore case
 # --follow: Follow symlinks
 # --glob: Additional conditions for search (in this case ignore everything in the .git/ folder)
-export FZF_DEFAULT_COMMAND='rg --files --hidden -i --follow --glob "!.git/*"'
+# export FZF_DEFAULT_COMMAND='rg --files --hidden -i --follow --glob "!.git/*"'
+export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
 # export FZF_DEFAULT_COMMAND='rg --files --no-ignore --hidden -i --follow --glob "!.git/*"'
-#
-#
-# export APP_ENV="staging"
-export APP_ENV="development"
-export NODE_ENV="development"
+
+
