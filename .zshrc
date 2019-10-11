@@ -134,6 +134,11 @@ export PATH=$PATH:$ANDROID_HOME/tools
 export PATH=$PATH:$ANDROID_HOME/tools/bin
 export PATH=$PATH:$ANDROID_HOME/platform-tools
 
+
+# ubuntu
+# export ANDROID_HOME=$HOME/Android/sdk
+# export JAVA_HOME=/usr/lib/jvm/adoptopenjdk-8-openj9-amd64/jre
+
 # ------------- nvm ---------------------
 NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
