@@ -12,4 +12,8 @@ let mapleader = " "
 
 nmap <leader>x :action CloseContent<CR>
 nmap <leader>g :action GotoDeclaration<CR>
+nmap <c-p> :action GotoFile<CR>
+nmap <c-b> :action RecentFiles<CR>
+nmap <c-m> :action EditorMatchBrace<CR>
+
 nmap \ :action FindInPath<CR>
