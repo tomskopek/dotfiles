@@ -59,9 +59,9 @@ fi
 alias vim='nvim'
 alias mux='tmuxinator'
 
-alias zshconfig="vim ~/.zshrc"
-alias zshsource="source ~/.zshrc"
-alias vimconfig="vim ~/.vimrc"
+alias zshc="vim ~/.zshrc"
+alias zshs="source ~/.zshrc"
+alias vimc="vim ~/.vimrc"
 alias vimdir="cd ~/.vim/"
 alias tmuxconfig="vim ~/.tmux.conf"
 alias gitconfig="vim ~/.gitconfig"
@@ -102,6 +102,12 @@ alias lmob='cd ~/dev/lane-next/lane-mobile'
 alias ios='cd ~/dev/lane-next/lane-mobile/ios'
 alias and='cd ~/dev/lane-next/lane-mobile/android'
 
+# ------------ dwtd stuff ---------------
+alias dse='cd ~/dev/personal/dwtd/dwtd_server/'
+alias drn='cd ~/dev/personal/dwtd/dwtd_react_native/'
+alias dsh='cd ~/dev/personal/dwtd/dwtd_shared/'
+alias dwe='cd ~/dev/personal/dwtd/dwtd_web/'
+
 # ------------ path stuff ---------------
 
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
@@ -109,6 +115,7 @@ export PATH="$PATH:$HOME/.rvm/bin"
 export MYSQL_PATH=/usr/local/Cellar/mysql@5.6
 export PATH="$MYSQL_PATH:$PATH"
 export PATH="/usr/local/opt/mysql@5.6/bin:$PATH"
+export PATH="/Users/tom/Library/Python/2.7/bin:$PATH"
 
 # source activate q12
 export PATH=/anaconda/bin:$PATH
@@ -146,6 +153,5 @@ export FZF_DEFAULT_COMMAND='rg --files --hidden -i --follow --glob "!.git/*"'
 # export FZF_DEFAULT_COMMAND='rg --files --no-ignore --hidden -i --follow --glob "!.git/*"'
 #
 #
-# export APP_ENV="staging"
+
 export APP_ENV="development"
-export NODE_ENV="development"
