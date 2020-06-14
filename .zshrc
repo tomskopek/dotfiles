@@ -45,6 +45,9 @@ else
   export EDITOR='nvim'
 fi
 
+
+bindkey '^ ' autosuggest-accept
+
 # Compilation flags
 # export ARCHFLAGS="-arch x86_64"
 
@@ -109,14 +112,16 @@ export APP_ENV="local"
 export NODE_ENV="local"
 export HUSKY_SKIP_HOOKS="true"
 
-# ------------ autosuggest --------------
-bindkey '^ ' autosuggest-accept
-
 # ------------ dwtd stuff ---------------
 alias dse='cd ~/dev/personal/dwtd/dwtd_server/'
 alias drn='cd ~/dev/personal/dwtd/dwtd_react_native/'
 alias dsh='cd ~/dev/personal/dwtd/dwtd_shared/'
 alias dwe='cd ~/dev/personal/dwtd/dwtd_web/'
+
+# ------------ line3 stuff ---------------
+alias line3='cd ~/dev/line3/'
+alias lwe='cd ~/dev/line3/line3_web/'
+alias lse='cd ~/dev/line3/line3_server/'
 
 # ------------ path stuff ---------------
 
@@ -168,4 +173,3 @@ export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
 #
 #
 
-export APP_ENV="development"
