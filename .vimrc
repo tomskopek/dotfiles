@@ -398,7 +398,12 @@ set mouse=a
 
 " ================ Copy/Paste ============================
 
+" this works for mac
 set clipboard=unnamed
+
+" this works for ubuntu
+" set clipboard=unnamedplus
+
 " vnoremap <C-c> :.w !pbcopy<CR><CR>
 vnoremap <silent> <C-c> :<CR>:let @a=@" \| execute "normal! vgvy" \| let res=system("pbcopy", @") \| let @"=@a<CR>
 
