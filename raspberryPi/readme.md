@@ -1,3 +1,7 @@
+# install tmux
+
+sudo apt-get update && sudo apt-get install -y tmux
+
 # install vim
 
 sudo apt-get update && sudo apt-get install -y vim
