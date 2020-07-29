@@ -45,6 +45,9 @@ else
   export EDITOR='nvim'
 fi
 
+
+bindkey '^ ' autosuggest-accept
+
 # Compilation flags
 # export ARCHFLAGS="-arch x86_64"
 
@@ -128,8 +131,16 @@ export APP_URL="http://192.168.2.84:5000"
 export LINEAR_API_KEY="Fp2Bo1eqRM7r4aHB6EAsEV5Hjj2wl1w03XovYgXP"
 # export HUSKY_SKIP_HOOKS="true"
 
-# ------------ autosuggest --------------
-bindkey '^ ' autosuggest-accept
+# ------------ dwtd stuff ---------------
+alias dse='cd ~/dev/personal/dwtd/dwtd_server/'
+alias drn='cd ~/dev/personal/dwtd/dwtd_react_native/'
+alias dsh='cd ~/dev/personal/dwtd/dwtd_shared/'
+alias dwe='cd ~/dev/personal/dwtd/dwtd_web/'
+
+# ------------ line3 stuff ---------------
+alias line3='cd ~/dev/line3/'
+alias lwe='cd ~/dev/line3/line3_web/'
+alias lse='cd ~/dev/line3/line3_server/'
 
 # ------------ path stuff ---------------
 
@@ -138,6 +149,7 @@ export PATH="$PATH:$HOME/.rvm/bin"
 export MYSQL_PATH=/usr/local/Cellar/mysql@5.6
 export PATH="$MYSQL_PATH:$PATH"
 export PATH="/usr/local/opt/mysql@5.6/bin:$PATH"
+export PATH="/Users/tom/Library/Python/2.7/bin:$PATH"
 
 # source activate q12
 export PATH=/anaconda/bin:$PATH
@@ -179,5 +191,6 @@ NVM_DIR="$HOME/.nvm"
 # export FZF_DEFAULT_COMMAND='rg --files --hidden -i --follow --glob "!.git/*"'
 export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
 # export FZF_DEFAULT_COMMAND='rg --files --no-ignore --hidden -i --follow --glob "!.git/*"'
-
+#
+#
 

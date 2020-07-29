@@ -1,6 +1,7 @@
 set clipboard+=unnamed
 set commentary
 set surround
+set multiple-cursors
 
 set visualbell
 set noerrorbells " Turn off annoying error bell sound
@@ -10,11 +11,12 @@ set hls " Better highlight color
 
 let mapleader = " "
 
+nmap <leader>ev :e ~/.ideavimrc<CR>
+nmap <leader>sv :source ~/.ideavimrc<CR>
 nmap <leader>x :action CloseContent<CR>
 nmap <c-w> :action CloseContent<CR>
 nmap <leader>g :action GotoDeclaration<CR>
 nmap <c-p> :action GotoFile<CR>
 nmap <c-b> :action RecentFiles<CR>
 nmap <c-m> :action EditorMatchBrace<CR>
-
 nmap \ :action FindInPath<CR>
