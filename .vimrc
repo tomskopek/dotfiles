@@ -70,7 +70,7 @@ Plug 'ap/vim-css-color'
 Plug 'prettier/vim-prettier', {
   \ 'do': 'yarn install',
   \ 'for': ['javascript', 'typescript', 'css', 'less', 'scss', 'json', 'graphql', 'markdown', 'vue', 'yaml', 'html'] }
-Plug 'w0rp/ale'
+" Plug 'w0rp/ale'
 
 " === deoplete ===
 if has('nvim')

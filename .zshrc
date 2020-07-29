@@ -59,19 +59,25 @@ fi
 alias vim='nvim'
 alias mux='tmuxinator'
 
-alias zshconfig="vim ~/.zshrc"
-alias zshsource="source ~/.zshrc"
-alias vimconfig="vim ~/.vimrc"
+alias zshc="vim ~/.zshrc"
+alias zshs="source ~/.zshrc"
+alias vimc="vim ~/.vimrc"
 alias vimdir="cd ~/.vim/"
-alias tmuxconfig="vim ~/.tmux.conf"
-alias gitconfig="vim ~/.gitconfig"
-alias pryconfig="vim ~/.pryrc"
+alias tmuxc="vim ~/.tmux.conf"
+alias gitc="vim ~/.gitconfig"
+alias pryc="vim ~/.pryrc"
 
 alias chrome="/usr/bin/open -a '/Applications/Google Chrome.app'"
 
 alias dev='cd ~/dev'
 alias pdev='cd ~/dev/personal'
 alias dotfiles='cd ~/dev/personal/dotfiles'
+
+# ---------- docker -------------------
+alias nukedocker='docker stop $(docker ps -aq) && docker rm $(docker ps -aq) && docker rmi $(docker images -aq) && docker system prune'
+
+# ---------- javascript stuff ---------
+alias pkj='vim package.json'
 
 # ---------- zappi stuff --------------
 
@@ -98,16 +104,29 @@ export QUATTRO_INSPECT="true"
 
 # ------------ lane stuff ---------------
 alias lne='cd ~/dev/lane/lane-next/'
-alias lmo='cd ~/dev/lane/lane-next/lane-mobile'
-alias lwe='cd ~/dev/lane/lane-next/lane-web'
-alias lse='cd ~/dev/lane/lane-next/lane-server'
-alias ios='cd ~/dev/lane/lane-next/lane-mobile/ios'
-alias and='cd ~/dev/lane/lane-next/lane-mobile/android'
-alias yslw='yarn start-less-watch'
+alias lmo='cd ~/dev/lane/lane-next/packages/lane-mobile'
+alias lwe='cd ~/dev/lane/lane-next/packages/lane-web'
+alias lse='cd ~/dev/lane/lane-next/packages/lane-server'
+alias lin='cd ~/dev/lane/lane-next/packages/lane-infrastructure'
+alias lsh='cd ~/dev/lane/lane-next/packages/lane-shared'
+alias lim='cd ~/dev/lane/lane-next/packages/import'
+alias ios='cd ~/dev/lane/lane-next/packages/lane-mobile/ios'
+alias and='cd ~/dev/lane/lane-next/packages/lane-mobile/android'
+
+alias yms='yarn workspace lane-mobile start'
+alias yss='yarn workspace lane-server start'
+# alias yss='yarn workspace lane-server dev:start'
+alias yws='yarn workspace lane-web start'
+
+alias nukeenv='rm -rf node_modules; rm -rf packages/lane-mobile/node_modules; lerna bootstrap && lerna link'
+alias lers='lerna clean && lerna bootstrap && lerna link'
 
 export APP_ENV="local"
 export NODE_ENV="local"
-export HUSKY_SKIP_HOOKS="true"
+export DISABLE_KAFKA=true
+export APP_URL="http://192.168.2.84:5000"
+export LINEAR_API_KEY="Fp2Bo1eqRM7r4aHB6EAsEV5Hjj2wl1w03XovYgXP"
+# export HUSKY_SKIP_HOOKS="true"
 
 # ------------ autosuggest --------------
 bindkey '^ ' autosuggest-accept
@@ -126,18 +145,20 @@ export PATH=/anaconda/bin:$PATH
 export PATH="/usr/local/opt/icu4c/bin:$PATH"
 export PATH="/usr/local/opt/icu4c/sbin:$PATH"
 
-# android
+# --- android ---
+# mac
 export ANDROID_HOME=$HOME/Library/Android/sdk
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home
+# ubuntu
+#export ANDROID_HOME=$HOME/Android/sdk
+#export JAVA_HOME=/usr/lib/jvm/adoptopenjdk-8-openj9-amd64/jre
+
 export PATH=$PATH:$ANDROID_HOME/emulator
 export PATH=$PATH:$ANDROID_HOME/tools
 export PATH=$PATH:$ANDROID_HOME/tools/bin
 export PATH=$PATH:$ANDROID_HOME/platform-tools
 
 
-# ubuntu
-# export ANDROID_HOME=$HOME/Android/sdk
-# export JAVA_HOME=/usr/lib/jvm/adoptopenjdk-8-openj9-amd64/jre
 
 # ------------- nvm ---------------------
 NVM_DIR="$HOME/.nvm"

@@ -11,6 +11,7 @@ set hls " Better highlight color
 let mapleader = " "
 
 nmap <leader>x :action CloseContent<CR>
+nmap <c-w> :action CloseContent<CR>
 nmap <leader>g :action GotoDeclaration<CR>
 nmap <c-p> :action GotoFile<CR>
 nmap <c-b> :action RecentFiles<CR>
