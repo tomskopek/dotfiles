@@ -44,6 +44,7 @@ PACKAGES=(
     the_silver_searcher
     ripgrep
     fzf
+    fd
     tmux
     vim
     neovim

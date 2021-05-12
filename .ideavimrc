@@ -9,12 +9,15 @@ set ignorecase " Search doesn't care about case
 set incsearch " Jump to search match without hitting enter
 set hls " Better highlight color
 
+set ideajoin " https://github.com/JetBrains/ideavim/wiki/%60ideajoin%60-examples
+
 let mapleader = " "
 
 nmap <leader>ev :e ~/.ideavimrc<CR>
 nmap <leader>sv :source ~/.ideavimrc<CR>
 nmap <leader>x :action CloseContent<CR>
 nmap <c-w> :action CloseContent<CR>
+nmap <leader>f :action SelectInProjectView<CR>
 nmap <leader>g :action GotoDeclaration<CR>
 nmap <c-p> :action GotoFile<CR>
 nmap <c-b> :action RecentFiles<CR>
