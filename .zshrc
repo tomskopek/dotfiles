@@ -81,55 +81,7 @@ alias nukedocker='docker stop $(docker ps -aq) && docker rm $(docker ps -aq) && 
 
 # ---------- javascript stuff ---------
 alias pkj='vim package.json'
-
-# ---------- zappi stuff --------------
-
-alias zdev='cd ~/dev/zappi'
-alias zc='cd ~/dev/zappi/zappi.client; source activate q14'
-alias zs='cd ~/dev/zappi/zappistore.app'
-alias dc='cd ~/dev/zappi/data-collector.app'
-alias ff='cd ~/dev/zappi/fluid.framework'
-alias io='cd ~/dev/zappi/insight-out.engine'
-alias se='cd ~/dev/zappi/stats_apps.engine'
-alias mod='cd ~/dev/zappi/measure_data'
-alias rjw='rake jobs:work_single'
-alias rqs='rake quattro:server'
-alias rs='rails s'
-alias rc='rails c'
-alias yf='yarn fluid'
-alias rrs='rake resque:scheduler'
-alias rss='bundle exec rake server:start'
-alias rrw="bundle exec rake resque:work QUEUE='*'"
-alias fs='foreman start'
 alias ys='yarn start'
-# quattro evaluat_on_inspect = true
-export QUATTRO_INSPECT="true"
-
-# ------------ lane stuff ---------------
-alias lne='cd ~/dev/lane/lane-next/'
-alias lmo='cd ~/dev/lane/lane-next/packages/lane-mobile'
-alias lwe='cd ~/dev/lane/lane-next/packages/lane-web'
-alias lse='cd ~/dev/lane/lane-next/packages/lane-server'
-alias lin='cd ~/dev/lane/lane-next/packages/lane-infrastructure'
-alias lsh='cd ~/dev/lane/lane-next/packages/lane-shared'
-alias lim='cd ~/dev/lane/lane-next/packages/import'
-alias ios='cd ~/dev/lane/lane-next/packages/lane-mobile/ios'
-alias and='cd ~/dev/lane/lane-next/packages/lane-mobile/android'
-
-alias yms='yarn workspace lane-mobile start'
-alias yss='yarn workspace lane-server start'
-# alias yss='yarn workspace lane-server dev:start'
-alias yws='yarn workspace lane-web start'
-
-alias nukeenv='rm -rf node_modules; rm -rf packages/lane-mobile/node_modules; lerna bootstrap && lerna link'
-alias lers='lerna clean && lerna bootstrap && lerna link'
-
-export APP_ENV="local"
-export NODE_ENV="local"
-export DISABLE_KAFKA=true
-export APP_URL="http://192.168.2.84:5000"
-export LINEAR_API_KEY="Fp2Bo1eqRM7r4aHB6EAsEV5Hjj2wl1w03XovYgXP"
-# export HUSKY_SKIP_HOOKS="true"
 
 # ------------ dwtd stuff ---------------
 alias dse='cd ~/dev/personal/dwtd/dwtd_server/'
