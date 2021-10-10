@@ -76,6 +76,13 @@ alias dotfiles='cd ~/dev/dotfiles'
 alias pkj='vim package.json'
 alias ys='yarn start'
 
+# --- TopHouse
+alias th='cd ~/dev/tophouse/'
+alias tmo='cd ~/dev/tophouse/packages/mobile/'
+alias tse='cd ~/dev/tophouse/packages/server/'
+alias tdb='cd ~/dev/tophouse/packages/database/'
+alias tcr='cd ~/dev/tophouse/packages/cron/'
+alias tsh='cd ~/dev/tophouse/packages/shared/'
 
 # --- android ---
 # mac
@@ -89,6 +96,10 @@ export PATH=$PATH:$ANDROID_HOME/emulator
 export PATH=$PATH:$ANDROID_HOME/tools
 export PATH=$PATH:$ANDROID_HOME/tools/bin
 export PATH=$PATH:$ANDROID_HOME/platform-tools
+
+
+# --- Path (for Nvim but also others)
+export PATH="$HOME/.local/bin/:$PATH"
 
 
 
