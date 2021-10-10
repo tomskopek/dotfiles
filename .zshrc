@@ -107,16 +107,12 @@ NVM_DIR="$HOME/.nvm"
 # set rtp+=/usr/local/opt/fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-case `uname` in
-  Darwin)
-    # commands for OS X go here
+case "$OSTYPE" in
+  darwin*)
+    # ...
     source "${ZDOTDIR:-${HOME}}/.zshrc-mac"
   ;;
-  Linux)
-    source "${ZDOTDIR:-${HOME}}/.zshrc-`uname`"
-    # commands for Linux go here
-  ;;
-  FreeBSD)
-    # commands for FreeBSD go here
+  linux*)
+    # ...
   ;;
 esac
