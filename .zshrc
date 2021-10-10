@@ -59,55 +59,23 @@ bindkey '^ ' autosuggest-accept
 # users are encouraged to define aliases within the ZSH_CUSTOM folder.
 # For a full list of active aliases, run `alias`.
 #
+alias vi='nvim'
 alias vim='nvim'
-alias mux='tmuxinator'
 
 alias zshc="vim ~/.zshrc"
 alias zshs="source ~/.zshrc"
-alias vimc="vim ~/.vimrc"
-alias vimdir="cd ~/.vim/"
 alias tmuxc="vim ~/.tmux.conf"
 alias gitc="vim ~/.gitconfig"
-alias pryc="vim ~/.pryrc"
 
 alias chrome="/usr/bin/open -a '/Applications/Google Chrome.app'"
 
 alias dev='cd ~/dev'
-alias pdev='cd ~/dev/personal'
-alias dotfiles='cd ~/dev/personal/dotfiles'
-
-# ---------- docker -------------------
-alias nukedocker='docker stop $(docker ps -aq) && docker rm $(docker ps -aq) && docker rmi $(docker images -aq) && docker system prune'
+alias dotfiles='cd ~/dev/dotfiles'
 
 # ---------- javascript stuff ---------
 alias pkj='vim package.json'
 alias ys='yarn start'
 
-# ------------ dwtd stuff ---------------
-alias dse='cd ~/dev/personal/dwtd/dwtd_server/'
-alias drn='cd ~/dev/personal/dwtd/dwtd_react_native/'
-alias dsh='cd ~/dev/personal/dwtd/dwtd_shared/'
-alias dwe='cd ~/dev/personal/dwtd/dwtd_web/'
-
-# ------------ line3 stuff ---------------
-alias line3='cd ~/dev/line3/'
-alias lwe='cd ~/dev/line3/line3_web/'
-alias lse='cd ~/dev/line3/line3_server/'
-
-# ------------ path stuff ---------------
-
-# Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
-export PATH="$PATH:$HOME/.rvm/bin"
-export MYSQL_PATH=/usr/local/Cellar/mysql@5.6
-export PATH="$MYSQL_PATH:$PATH"
-export PATH="/usr/local/opt/mysql@5.6/bin:$PATH"
-export PATH="/Users/tom/Library/Python/2.7/bin:$PATH"
-
-# source activate q12
-export PATH=/anaconda/bin:$PATH
-
-export PATH="/usr/local/opt/icu4c/bin:$PATH"
-export PATH="/usr/local/opt/icu4c/sbin:$PATH"
 
 # --- android ---
 # mac
