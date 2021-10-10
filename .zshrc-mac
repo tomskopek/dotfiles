@@ -1,3 +1,7 @@
+# --- Android specific
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home
+
 # --- Path (for Nvim but also others)
 export PATH="$HOME/.local/bin/:$PATH"
 

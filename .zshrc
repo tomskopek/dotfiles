@@ -84,14 +84,6 @@ alias tdb='cd ~/dev/tophouse/packages/database/'
 alias tcr='cd ~/dev/tophouse/packages/cron/'
 alias tsh='cd ~/dev/tophouse/packages/shared/'
 
-# --- android ---
-# mac
-export ANDROID_HOME=$HOME/Library/Android/sdk
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home
-# ubuntu
-#export ANDROID_HOME=$HOME/Android/sdk
-#export JAVA_HOME=/usr/lib/jvm/adoptopenjdk-8-openj9-amd64/jre
-
 export PATH=$PATH:$ANDROID_HOME/emulator
 export PATH=$PATH:$ANDROID_HOME/tools
 export PATH=$PATH:$ANDROID_HOME/tools/bin
@@ -109,10 +101,9 @@ NVM_DIR="$HOME/.nvm"
 
 case "$OSTYPE" in
   darwin*)
-    # ...
     source "${ZDOTDIR:-${HOME}}/.zshrc-mac"
   ;;
   linux*)
-    # ...
+    source "${ZDOTDIR:-${HOME}}/.zshrc-ubuntu"
   ;;
 esac

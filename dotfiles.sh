@@ -8,5 +8,6 @@ ln -s ~/dev/dotfiles/.ideavimrc ~/.ideavimrc
 ln -s ~/dev/dotfiles/.tmux.conf ~/.tmux.conf
 ln -s ~/dev/dotfiles/.zshrc ~/.zshrc
 ln -s ~/dev/dotfiles/.zshrc-mac ~/.zshrc-mac
+ln -s ~/dev/dotfiles/.zshrc-ubuntu ~/.zshrc-ubuntu
 
 # https://neovim.io/doc/user/nvim.html#nvim-from-vim

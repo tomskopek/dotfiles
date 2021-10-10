@@ -1,0 +1,8 @@
+# --- intelliJ editors
+export PATH=/home/tom/applications/android-studio/bin:$PATH
+export PATH=/home/tom/applications/WebStorm-212.5284.41/bin:$PATH
+
+# --- Android specific
+export ANDROID_HOME=$HOME/Android/Sdk
+
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
