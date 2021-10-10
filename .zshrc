@@ -97,12 +97,6 @@ export PATH=$PATH:$ANDROID_HOME/tools
 export PATH=$PATH:$ANDROID_HOME/tools/bin
 export PATH=$PATH:$ANDROID_HOME/platform-tools
 
-
-# --- Path (for Nvim but also others)
-export PATH="$HOME/.local/bin/:$PATH"
-
-
-
 # ------------- nvm ---------------------
 NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
@@ -113,15 +107,16 @@ NVM_DIR="$HOME/.nvm"
 # set rtp+=/usr/local/opt/fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-# --files: List files that would be searched but do not search
-# --no-ignore: Do not respect .gitignore, etc...
-# --hidden: Search hidden files and folders
-# -i: ignore case
-# --follow: Follow symlinks
-# --glob: Additional conditions for search (in this case ignore everything in the .git/ folder)
-# export FZF_DEFAULT_COMMAND='rg --files --hidden -i --follow --glob "!.git/*"'
-export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
-# export FZF_DEFAULT_COMMAND='rg --files --no-ignore --hidden -i --follow --glob "!.git/*"'
-#
-#
-
+case `uname` in
+  Darwin)
+    # commands for OS X go here
+    source "${ZDOTDIR:-${HOME}}/.zshrc-mac"
+  ;;
+  Linux)
+    source "${ZDOTDIR:-${HOME}}/.zshrc-`uname`"
+    # commands for Linux go here
+  ;;
+  FreeBSD)
+    # commands for FreeBSD go here
+  ;;
+esac
