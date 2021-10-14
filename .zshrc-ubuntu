@@ -1,6 +1,11 @@
+# --- APP_URL
+export APP_URL='http://192.168.2.157:3000'
+
 # --- intelliJ editors
 export PATH=/home/tom/applications/android-studio/bin:$PATH
 export PATH=/home/tom/applications/WebStorm-212.5284.41/bin:$PATH
+
+alias androidstudio='/home/tom/applications/android-studio/bin/studio.sh'
 
 # --- Android specific
 export ANDROID_HOME=$HOME/Android/Sdk

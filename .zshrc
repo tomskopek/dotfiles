@@ -84,6 +84,15 @@ alias tdb='cd ~/dev/tophouse/packages/database/'
 alias tcr='cd ~/dev/tophouse/packages/cron/'
 alias tsh='cd ~/dev/tophouse/packages/shared/'
 
+case "$OSTYPE" in
+  darwin*)
+    source "${ZDOTDIR:-${HOME}}/.zshrc-mac"
+  ;;
+  linux*)
+    source "${ZDOTDIR:-${HOME}}/.zshrc-ubuntu"
+  ;;
+esac
+
 export PATH=$PATH:$ANDROID_HOME/emulator
 export PATH=$PATH:$ANDROID_HOME/tools
 export PATH=$PATH:$ANDROID_HOME/tools/bin
@@ -99,11 +108,3 @@ NVM_DIR="$HOME/.nvm"
 # set rtp+=/usr/local/opt/fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-case "$OSTYPE" in
-  darwin*)
-    source "${ZDOTDIR:-${HOME}}/.zshrc-mac"
-  ;;
-  linux*)
-    source "${ZDOTDIR:-${HOME}}/.zshrc-ubuntu"
-  ;;
-esac
