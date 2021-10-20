@@ -66,6 +66,8 @@ alias zshc="vim ~/.zshrc"
 alias zshs="source ~/.zshrc"
 alias tmuxc="vim ~/.tmux.conf"
 alias gitc="vim ~/.gitconfig"
+alias vimc="vim ~/.config/nvim/tom"
+alias vimcd="cd ~/.config/nvim/tom"
 
 alias chrome="/usr/bin/open -a '/Applications/Google Chrome.app'"
 
