@@ -83,6 +83,9 @@ alias tse='cd ~/dev/tophouse/packages/server/'
 alias tdb='cd ~/dev/tophouse/packages/database/'
 alias tcr='cd ~/dev/tophouse/packages/cron/'
 alias tsh='cd ~/dev/tophouse/packages/shared/'
+alias yss='yarn server start'
+alias yms='yarn mobile start'
+alias yws='yarn web start'
 
 case "$OSTYPE" in
   darwin*)
