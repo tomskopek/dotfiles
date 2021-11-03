@@ -24,3 +24,7 @@ nmap <c-p> :action GotoFile<CR>
 nmap <c-b> :action RecentFiles<CR>
 nmap <c-m> :action EditorMatchBrace<CR>
 nmap \ :action FindInPath<CR>
+
+
+" linux specific stuff
+nmap <c-f> :action FindInPath<CR>

@@ -113,3 +113,5 @@ NVM_DIR="$HOME/.nvm"
 # set rtp+=/usr/local/opt/fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
+eval "$(pyenv init -)"
+eval "$(pyenv init --path)"
