@@ -167,3 +167,13 @@ ln -s ~/dev/dotfiles/.zshrc-ubuntu ~/.zshrc-ubuntu
 
 19. install lazygit
     `$ brew install jesseduffield/lazygit/lazygit`
+
+20. install font-manager
+    `$ sudo apt install font-manager`
+
+21. Get powerline fonts:
+    [InconsolataDz](https://github.com/powerline/fonts/blob/master/InconsolataDz/Inconsolata-dz%20for%20Powerline.otf)
+    [FiraMono](https://github.com/powerline/fonts/blob/master/FiraMono/FuraMono-Medium%20Powerline.otf)
+
+22. Set fonts in terminal
+    Hamburger > Preferences > Profiles(Unamed) > Custom Font
