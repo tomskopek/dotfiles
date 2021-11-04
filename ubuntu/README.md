@@ -165,6 +165,11 @@ ln -s ~/dev/dotfiles/.zshrc-ubuntu ~/.zshrc-ubuntu
 18. install tmux
     `$ brew install tmux`
 
+    18a. install tmux plugin manager:
+    `$ git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm`
+
+    18b. install plugins: open tmux. type prefix + I (capital I, as in Install) to fetch plugins
+
 19. install lazygit
     `$ brew install jesseduffield/lazygit/lazygit`
 
