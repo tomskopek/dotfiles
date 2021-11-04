@@ -113,3 +113,8 @@ NVM_DIR="$HOME/.nvm"
 # set rtp+=/usr/local/opt/fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
+# ------------- pyenv -------------------
+eval "$(pyenv init -)"
+
+# ------------- askpass
+export SUDO_ASKPASS=/usr/bin/ssh-askpass
