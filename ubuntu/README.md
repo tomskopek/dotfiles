@@ -177,3 +177,11 @@ ln -s ~/dev/dotfiles/.zshrc-ubuntu ~/.zshrc-ubuntu
 
 22. Set fonts in terminal
     Hamburger > Preferences > Profiles(Unamed) > Custom Font
+
+23. Install webstorm/Android Studio
+    `$ snap install android-studio` (might need --classic option)
+    `$ snap install webstorm` (might need --classic option)
+
+24. Install [java-jre](https://www.digitalocean.com/community/tutorials/how-to-install-java-with-apt-on-ubuntu-18-04)
+    `$ sudo apt install default-jre`
+    `$ sudo apt install default-jdk`
