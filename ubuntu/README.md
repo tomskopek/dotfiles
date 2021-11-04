@@ -160,6 +160,7 @@ ln -s ~/dev/dotfiles/.tmux.conf ~/.tmux.conf
 ln -s ~/dev/dotfiles/.zshrc ~/.zshrc   <- careful! make sure you have everything you need from there
 ln -s ~/dev/dotfiles/.zshrc-mac ~/.zshrc-mac
 ln -s ~/dev/dotfiles/.zshrc-ubuntu ~/.zshrc-ubuntu
+ln -s ~/dev/dotfiles/ubuntu/kinto.py ~/.config/kinto/kinto.py
 ```
 
 18. install tmux
