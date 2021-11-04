@@ -185,3 +185,6 @@ ln -s ~/dev/dotfiles/.zshrc-ubuntu ~/.zshrc-ubuntu
 24. Install [java-jre](https://www.digitalocean.com/community/tutorials/how-to-install-java-with-apt-on-ubuntu-18-04)
     `$ sudo apt install default-jre`
     `$ sudo apt install default-jdk`
+
+25. Install [yarn](https://classic.yarnpkg.com/lang/en/docs/install/#debian-stable)
+    `$ npm install --global yarn`
