@@ -81,6 +81,8 @@ alias ys='yarn start'
 # --- TopHouse
 alias th='cd ~/dev/tophouse/'
 alias tmo='cd ~/dev/tophouse/packages/mobile/'
+alias ios='cd ~/dev/tophouse/packages/mobile/ios/'
+alias and='cd ~/dev/tophouse/packages/mobile/android/'
 alias tse='cd ~/dev/tophouse/packages/server/'
 alias tdb='cd ~/dev/tophouse/packages/database/'
 alias tcr='cd ~/dev/tophouse/packages/cron/'
