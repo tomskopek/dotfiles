@@ -72,6 +72,7 @@ alias vimcd="cd ~/.config/nvim/tom"
 alias chrome="/usr/bin/open -a '/Applications/Google Chrome.app'"
 
 alias dev='cd ~/dev'
+alias tmp='cd ~/dev/tmp'
 alias dotfiles='cd ~/dev/dotfiles'
 
 # ---------- javascript stuff ---------
