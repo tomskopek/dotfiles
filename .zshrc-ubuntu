@@ -7,6 +7,9 @@ export PATH=/home/tom/applications/WebStorm-212.5284.41/bin:$PATH
 
 alias androidstudio='/home/tom/applications/android-studio/bin/studio.sh'
 
+# --- Fonts
+export FONTCONFIG_PATH=/etc/fonts
+
 # --- Android specific
 export ANDROID_HOME=$HOME/Android/Sdk
 

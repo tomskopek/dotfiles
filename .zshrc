@@ -72,6 +72,7 @@ alias vimcd="cd ~/.config/nvim/tom"
 alias chrome="/usr/bin/open -a '/Applications/Google Chrome.app'"
 
 alias dev='cd ~/dev'
+alias tmp='cd ~/dev/tmp'
 alias dotfiles='cd ~/dev/dotfiles'
 
 # ---------- javascript stuff ---------
@@ -85,6 +86,7 @@ alias tse='cd ~/dev/tophouse/packages/server/'
 alias tdb='cd ~/dev/tophouse/packages/database/'
 alias tcr='cd ~/dev/tophouse/packages/cron/'
 alias tsh='cd ~/dev/tophouse/packages/shared/'
+alias twe='cd ~/dev/tophouse/packages/web/'
 alias yss='yarn server start'
 alias yms='yarn mobile start'
 alias yws='yarn web start'
