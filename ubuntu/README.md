@@ -1,28 +1,43 @@
 # linux setup
 
-1. Install Chrome: https://www.google.com/intl/en_ca/chrome/
+1. Install [Chrome](https://www.google.com/intl/en_ca/chrome/)
 
-2. Update apt: `sudo apt update && sudo apt upgrade`
+2. Update apt
+```
+sudo apt update && sudo apt upgrade
+```
 
-3. Get curl: `sudo apt install curl`
+3. Get curl
+```
+sudo apt install curl
+```
 
-4. Install git: `sudo apt install git-all`
+4. Install Git
 
-   4a. Add ssh keys to github
-   
-   https://github.com/settings/keys
 
-   4b. Check for existing keys:
-   `ls -lA ~/.ssh`
+```
+sudo apt install git-all
+```
 
-   4c. Generate ssh keys if not already existing
-   `ssh-keygen -t ed25519 -C "tomskopek@gmail.com"`
+Add (ssh keys)[https://github.com/settings/keys] to github
 
-   4d. add to Github
+Check for existing keys:
+```
+ls -lA ~/.ssh
+```
+
+Generate ssh keys if not already existing
+```
+ssh-keygen -t ed25519 -C "tomskopek@gmail.com"
+```
+
+Add the keys to Github
 
 5. Get zsh so the rest of this process is nicer:
    
-   5a. `sudo apt install zsh`
+```
+sudo apt install zsh
+```
    
    5b. oh-my-zsh:
    
