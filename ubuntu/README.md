@@ -1,18 +1,18 @@
 # linux setup
 
-1. Install [Chrome](https://www.google.com/intl/en_ca/chrome/)
+### 1. Install [Chrome](https://www.google.com/intl/en_ca/chrome/)
 
-2. Update apt
+### 2. Update apt
 ```
 sudo apt update && sudo apt upgrade
 ```
 
-3. Get curl
+### 3. Install curl
 ```
 sudo apt install curl
 ```
 
-4. Install Git
+### 4. Install Git
 
 
 ```
