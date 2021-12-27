@@ -15,7 +15,7 @@ sudo apt install curl
 ### 4. Install Git
 
 
-```
+```console
 sudo apt install git-all
 ```
 
