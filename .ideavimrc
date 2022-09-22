@@ -1,7 +1,17 @@
 set clipboard+=unnamed
 set commentary
 set surround
+
 set multiple-cursors
+" Remap multiple-cursors shortcuts to match terryma/vim-multiple-cursors
+nmap <C-n> <Plug>NextWholeOccurrence
+xmap <C-n> <Plug>NextWholeOccurrence
+nmap g<C-n> <Plug>NextOccurrence
+xmap g<C-n> <Plug>NextOccurrence
+nmap <C-x> <Plug>SkipOccurrence
+xmap <C-x> <Plug>SkipOccurrence
+nmap <C-p> <Plug>RemoveOccurrence
+xmap <C-p> <Plug>RemoveOccurrence
 
 set visualbell
 set noerrorbells " Turn off annoying error bell sound
@@ -16,10 +26,11 @@ let mapleader = " "
 nmap <leader>ev :e ~/.ideavimrc<CR>
 nmap <leader>sv :source ~/.ideavimrc<CR>
 nmap <leader>x :action CloseContent<CR>
-nmap <c-w> :action CloseContent<CR>
+" nmap <c-w> :action CloseContent<CR>
 nmap <leader>f :action SelectInProjectView<CR>
 nmap <leader>g :action GotoDeclaration<CR>
 nmap <leader>p :action ReformatWithPrettierAction<CR>
+" nmap <leader>p :action OptimizeImports<CR> :action ReformatWithPrettierAction<CR>
 nmap <c-p> :action GotoFile<CR>
 nmap <c-b> :action RecentFiles<CR>
 nmap <c-m> :action EditorMatchBrace<CR>
