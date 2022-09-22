@@ -38,3 +38,6 @@
 
 # Git graph
   ll = log --graph --pretty=format:"%C(bold\\ blue)%h%Creset\\ %ad\\ %s\\ %C(red)%d%C(reset)\\ %C(bold\\ blue)<%an>%C(reset)" --date=relative
+
+# list most recently-used branches (http://ses4j.github.io/2020/04/01/git-alias-recent-branches/)
+  cob = !git reflog show --pretty=format:'%gs ~ %gd' --date=relative | grep 'checkout:' | grep -oE '[^ ]+ ~ .*' | awk -F~ '!seen[$1]++' | awk -F' ~ HEAD@{' '{print($1)}'| fzf --preview 'git ll --oneline --decorate --color {}' | xargs -n1 git checkout
