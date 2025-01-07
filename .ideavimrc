@@ -23,13 +23,19 @@ set ideajoin " https://github.com/JetBrains/ideavim/wiki/%60ideajoin%60-examples
 
 let mapleader = " "
 
+" ---
+" To find out what the Id of an intellij action is, open the Action Dialogue (cmd + shift + a) and type "Track Action Ids", turn this on.
+" Now perform the action you want to find the id of (eg. through the Action Dialogue)
+" The id will be displayed in the status bar.
+" ---
+
 nmap <leader>ev :e ~/.ideavimrc<CR>
 nmap <leader>sv :source ~/.ideavimrc<CR>
 nmap <leader>x :action CloseContent<CR>
 " nmap <c-w> :action CloseContent<CR>
 nmap <leader>f :action SelectInProjectView<CR>
 nmap <leader>g :action GotoDeclaration<CR>
-nmap <leader>p :action ReformatWithPrettierAction<CR>
+nmap <leader>p :action ReformatCode<CR>
 " nmap <leader>p :action OptimizeImports<CR> :action ReformatWithPrettierAction<CR>
 nmap <c-p> :action GotoFile<CR>
 nmap <c-b> :action RecentFiles<CR>
