@@ -1,20 +1,23 @@
 return {
-  { "hrsh7th/nvim-cmp", dependencies = { "hrsh7th/cmp-nvim-lsp", "L3MON4D3/LuaSnip", "saadparwaiz1/cmp_luasnip" }, config = function()
-      local cmp = require("cmp")
-      cmp.setup({
-        snippet = {
-          expand = function(args)
-            require("luasnip").lsp_expand(args.body)
-          end,
-        },
+  {
+    "hrsh7th/nvim-cmp",
+    enabled = true,
+    dependencies = {
+      "hrsh7th/cmp-nvim-lsp",
+      'hrsh7th/cmp-buffer',
+    },
+    event = "InsertEnter",
+    config = function()
+      local cmp = require('cmp')
+
+      cmp.setup {
         sources = {
-          { name = "nvim_lsp" },
+          { name = 'nvim_lsp' },
+          { name = "buffer", keyword_length = 3 },
         },
-        mapping = cmp.mapping.preset.insert({
-          ["<Tab>"] = cmp.mapping.select_next_item(),
-          ["<S-Tab>"] = cmp.mapping.select_prev_item(),
-        }),
-      })
+        mapping = cmp.mapping.preset.insert {
+        },
+      }
     end,
-  },
+  }
 }
