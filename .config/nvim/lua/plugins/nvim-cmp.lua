@@ -16,8 +16,14 @@ return {
           { name = "buffer", keyword_length = 3 },
         },
         mapping = cmp.mapping.preset.insert {
+          -- You can add or customize your key mappings here if needed
         },
       }
+
+      -- Auto-import on selecting a completion item
+      cmp.event:on('confirm_done', function()
+        vim.lsp.buf.code_action()
+      end)
     end,
   }
 }
