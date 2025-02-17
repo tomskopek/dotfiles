@@ -37,8 +37,8 @@ vim.cmd.colorscheme("kanagawa")
 -- ----------
 -- Error highlighting	lsp ✅
 -- Grep text with "\" ✅
--- "Go to def" keyboard shortcut
--- "Find usages" - done by lsp?
+-- "Go to def" keyboard shortcut ✅
+-- "Find usages" ✅
 -- Auto imports using lsp
 -- Prettier (auto format)	conform.vim
 -- Copilot
