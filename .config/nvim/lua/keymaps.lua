@@ -7,3 +7,5 @@ vim.keymap.set("n", "<Leader>cw", "m`:%s/\\s\\+$//e<CR>``", { silent = true, des
 vim.keymap.set("n", "<Leader>yf", function()
   vim.fn.setreg("+", vim.fn.expand("%:p"))
 end, { silent = true, desc = "Yank full file path to clipboard" })
+
+vim.api.nvim_set_keymap('n', '<leader>g', '<cmd>lua vim.lsp.buf.definition()<CR>', { noremap = true, silent = true, desc = "Go to Definition" })
