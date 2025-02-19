@@ -29,3 +29,8 @@ vim.keymap.set("n", "<leader>i", function()
 end, { desc = "Auto-import missing symbols", silent = true })
 
 vim.keymap.set("n", "<leader>qs", function() require("persistence").load() end, { desc = "Load the session for the current directory" })
+
+-- show error under cursor
+vim.keymap.set('n', '<leader>er', function()
+  vim.diagnostic.open_float(nil, { focusable = false, border = "rounded" })
+end, { desc = "Show diagnostics in a floating window" })
