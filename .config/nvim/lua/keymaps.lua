@@ -1,3 +1,7 @@
+-- Hint: To discover _where_ a keymap is being set:
+-- :verbose map <leader>ev
+
+
 -- Editing vim
 vim.keymap.set("n", "<leader>ev", ":edit ~/.config/nvim/lua/settings.lua<CR>", { silent = true, desc = "Source settings.lua" })
 vim.keymap.set("n", "<leader>sv", ":source ~/.config/nvim/lua/settings.lua<CR>", { silent = true, desc = "Source settings.lua" })
@@ -14,7 +18,6 @@ vim.api.nvim_set_keymap('n', '<leader>ca', '<cmd>lua vim.lsp.buf.code_action()<C
 
 -- Hint: To discover what other actions are possible for the word under cursor:
 -- :lua vim.lsp.buf.code_action({ filter = function(a) print(vim.inspect(a)) return false end })
-
 vim.keymap.set("n", "<leader>i", function()
   vim.lsp.buf.code_action({
     filter = function(action)
@@ -24,3 +27,5 @@ vim.keymap.set("n", "<leader>i", function()
     apply = true,
   })
 end, { desc = "Auto-import missing symbols", silent = true })
+
+vim.keymap.set("n", "<leader>qs", function() require("persistence").load() end, { desc = "Load the session for the current directory" })
