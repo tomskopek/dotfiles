@@ -11,7 +11,7 @@ return {
     { "<leader>sh", '<cmd>Telescope help_tags<cr>', desc = 'Search docs' },
     { "\\", '<cmd>Telescope live_grep<cr>', desc = 'Grep search' },
     { "<leader>sj", '<cmd>Telescope jumplist<cr>', desc = 'Search jumplist' },
-    { "<leader>sk", '<cmd>Telescope keymaps<cr>', desc = 'Search jumplist' },
+    { "<leader>sk", '<cmd>Telescope keymaps<cr>', desc = 'Search keymaps' },
   },
   config = function()
     local telescope = require("telescope")
