@@ -35,18 +35,16 @@ vim.cmd.colorscheme("kanagawa")
 --
 -- Must haves:
 -- ----------
--- Error highlighting	lsp ✅
--- Grep text with "\" ✅
--- "Go to def" keyboard shortcut ✅
--- "Find usages" ✅
--- Auto imports using lsp
+-- remove false python import errors: ■ Import "django.db.models.expressions" could not be resolved
+--    └─ This probably has something to do with conda environment?
 -- Prettier (auto format)	conform.vim
 -- Copilot
--- clever console.log snippets
--- ipdb snippet
+-- snippets - eg: expand ipdb, console.log, function() {}, etc etc
 
 -- Nice to haves:
 -- -------------
+-- Autocomplete braces
+-- I feel like indentation is not great? Need to study this some more and understand what actually needs to be improved
 -- Documentation for word under cursor with ctrl+k
--- nvim-tree is very laggy...
 -- there's a bit of lag when lsp servers starting up?
+-- Update dotfiles readme for setting up a new laptop
