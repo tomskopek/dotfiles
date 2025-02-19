@@ -16,6 +16,15 @@ return {
         end,
       })
 
+      -- Configure diagnostics
+      vim.diagnostic.config({
+        virtual_text = false,  -- Disable inline diagnostics
+        signs = true,         -- Keep the gutter signs
+        underline = true,     -- Keep underlining the problems
+        update_in_insert = false,
+        severity_sort = true,
+      })
+
       local lspconfig = require('lspconfig')
       lspconfig.lua_ls.setup({
         settings = {
