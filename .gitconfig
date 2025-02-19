@@ -1,5 +1,7 @@
 [core]
 	excludesfile = /Users/tom/.gitignore_global
+	eol = lf
+	autocrlf = false
 [difftool "sourcetree"]
 	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
 	path = 
@@ -21,7 +23,6 @@
   s = status
   undowip = "!f() { if (git log --pretty=format:"%s" | head -1 | grep -q '^WIP$'); then git undo; fi }; f"
   co = !git wip || true && git fetch && git checkout $1 && git undowip
-  cob = checkout -b
   pul = !git fetch && git pull --rebase --prune $@
   pu = !git wip || true && git pul && git undowip
   pp = !git pu && git push
@@ -32,12 +33,20 @@
   save = !git add -A && git commit -m "SAVEPOINT"
   wip = !git add -A && git commit -m "WIP"
   undo = reset HEAD~1 --mixed
-  amend = commit -a --amend
+  amend = commit --amend
 
   wipe = !git add -A && git commit -qm 'WIPE SAVEPOINT' && git reset HEAD~1 --hard
 
-# Git graph
+  # Git graph
   ll = log --graph --pretty=format:"%C(bold\\ blue)%h%Creset\\ %ad\\ %s\\ %C(red)%d%C(reset)\\ %C(bold\\ blue)<%an>%C(reset)" --date=relative
 
-# list most recently-used branches (http://ses4j.github.io/2020/04/01/git-alias-recent-branches/)
+  # list most recently-used branches (http://ses4j.github.io/2020/04/01/git-alias-recent-branches/)
   cob = !git reflog show --pretty=format:'%gs ~ %gd' --date=relative | grep 'checkout:' | grep -oE '[^ ]+ ~ .*' | awk -F~ '!seen[$1]++' | awk -F' ~ HEAD@{' '{print($1)}'| fzf --preview 'git ll --oneline --decorate --color {}' | xargs -n1 git checkout
+
+[rebase]
+	autoStash = true
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
