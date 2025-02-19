@@ -9,7 +9,7 @@ return {
     "nvim-tree/nvim-tree.lua",
     enabled = true,
     keys = {
-      { "<leader>e", '<cmd>NvimTreeToggle<cr>', desc = 'Toggle File Explorer' },
+      { "<leader>t", '<cmd>NvimTreeToggle<cr>', desc = 'Toggle File Explorer' },
       { "<leader>f", '<cmd>NvimTreeFindFile<cr>', desc = 'Find file in File Explorer' },
     },
     config = function()

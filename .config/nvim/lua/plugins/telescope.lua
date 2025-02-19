@@ -8,9 +8,9 @@ return {
   keys = {
     { "<C-p>", '<cmd>Telescope find_files<cr>', desc = 'File search' },
     { "<C-b>", '<cmd>Telescope buffers<cr>', desc = 'Search buffers' },
-    { "<leader>th", '<cmd>Telescope help_tags<cr>', desc = 'Search docs' },
+    { "<leader>sh", '<cmd>Telescope help_tags<cr>', desc = 'Search docs' },
     { "\\", '<cmd>Telescope live_grep<cr>', desc = 'Grep search' },
-    { "<leader>tj", '<cmd>Telescope jumplist<cr>', desc = 'Search jumplist' },
+    { "<leader>sj", '<cmd>Telescope jumplist<cr>', desc = 'Search jumplist' },
   },
   config = function()
     local telescope = require("telescope")
