@@ -35,7 +35,10 @@ nmap <leader>x :action CloseContent<CR>
 " nmap <c-w> :action CloseContent<CR>
 nmap <leader>f :action SelectInProjectView<CR>
 nmap <leader>g :action GotoDeclaration<CR>
+nmap <leader>b :action Annotate<CR>
+" nmap <leader>p :action ReformatWithPrettierAction<CR>
 nmap <leader>p :action ReformatCode<CR>
+nmap <leader>o :action Javascript.Linters.EsLint.Fix<CR>
 " nmap <leader>p :action OptimizeImports<CR> :action ReformatWithPrettierAction<CR>
 nmap <c-p> :action GotoFile<CR>
 nmap <c-b> :action RecentFiles<CR>
