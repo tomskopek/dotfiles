@@ -32,3 +32,5 @@ vim.opt.splitbelow = true -- Horizontal split appears from below (eg. :help)
 vim.opt.splitright = true
 vim.opt.inccommand = "split" -- Show the effect of :%s in a split
 
+-- Misc
+vim.keymap.set("n", "q:", "<Nop>") -- Disable the command-line window
