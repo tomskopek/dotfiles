@@ -12,9 +12,14 @@ vim.opt.tabstop = 2 -- Number of spaces a tab character represents
 vim.opt.termguicolors = true -- Enable true color support (better color rendering in terminals that support it)
 vim.opt.wrap = false -- Don't wrap long lines
 vim.opt.virtualedit = "block" -- In Visual block mode, cursor can be positioned anywhere (even if there is no character there)
+vim.opt.signcolumn = "yes" -- Keep the sign column always open
+vim.opt.cursorline = false -- Show which line your cursor is on
 
 -- Use system clipboard
-vim.opt.clipboard = "unnamedplus"
+--   Schedule the setting after `UiEnter` because it can increase startup-time.
+vim.schedule(function()
+  vim.opt.clipboard = "unnamedplus"
+end)
 
 -- Search
 vim.opt.incsearch = true -- Find next match as we type
@@ -32,5 +37,5 @@ vim.opt.splitbelow = true -- Horizontal split appears from below (eg. :help)
 vim.opt.splitright = true
 vim.opt.inccommand = "split" -- Show the effect of :%s in a split
 
--- Misc
+-- Disable for clumsy fingers
 vim.keymap.set("n", "q:", "<Nop>") -- Disable the command-line window
