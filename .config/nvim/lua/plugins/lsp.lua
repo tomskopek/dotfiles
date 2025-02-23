@@ -19,7 +19,15 @@ return {
       -- Configure diagnostics
       vim.diagnostic.config({
         virtual_text = false,  -- Disable inline diagnostics
-        signs = true,         -- Keep the gutter signs
+        signs = {
+          severity_sort = true,
+          text = {
+            [vim.diagnostic.severity.ERROR] = "E",
+            [vim.diagnostic.severity.WARN] = "", -- Disable "W" in the gutter
+            [vim.diagnostic.severity.INFO] = "", -- Disable "I" in the gutter
+            [vim.diagnostic.severity.HINT] = "", -- Disable "H" in the gutter
+          },
+        },
         underline = true,     -- Keep underlining the problems
         update_in_insert = false,
         severity_sort = true,
@@ -34,6 +42,18 @@ return {
             },
           },
         },
+      })
+
+      lspconfig.pyright.setup({
+        settings = {
+          python = {
+            analysis = {
+              diagnosticSeverityOverrides = {
+                reportUnusedVariable = "none" -- Disable "unused variable" hint
+              },
+            }
+          }
+        }
       })
     end,
   }
