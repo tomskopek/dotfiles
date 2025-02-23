@@ -12,10 +12,6 @@ vim.keymap.set("n", "<Leader>yf", function()
   vim.fn.setreg("+", vim.fn.expand("%:p"))
 end, { silent = true, desc = "Yank full file path to clipboard" })
 
-vim.api.nvim_set_keymap('n', '<leader>g', '<cmd>lua vim.lsp.buf.definition()<CR>', { noremap = true, silent = true, desc = "Go to Definition" })
-vim.api.nvim_set_keymap('n', '<leader>r', '<cmd>lua vim.lsp.buf.references()<CR>', { noremap = true, silent = true, desc = "Find Usages" })
-vim.api.nvim_set_keymap('n', '<leader>ca', '<cmd>lua vim.lsp.buf.code_action()<CR>', { noremap = true, silent = true, desc = "Code actions for word under cursor" })
-
 -- Hint: To discover what other actions are possible for the word under cursor:
 -- :lua vim.lsp.buf.code_action({ filter = function(a) print(vim.inspect(a)) return false end })
 vim.keymap.set("n", "<leader>i", function()
