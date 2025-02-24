@@ -106,8 +106,7 @@ return {
           settings = {
             python = {
               analysis = {
-                diagnosticSeverityOverrides = {
-                }
+                ignore = { '*' }, -- using ruff
               }
             }
           }
