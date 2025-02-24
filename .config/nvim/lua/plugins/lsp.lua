@@ -59,12 +59,26 @@ return {
           text = {
             [vim.diagnostic.severity.ERROR] = "E",
             [vim.diagnostic.severity.WARN] = "W",
-            [vim.diagnostic.severity.INFO] = "", -- Disable "I" in the gutter
-            [vim.diagnostic.severity.HINT] = "", -- Disable "H" in the gutter
+            [vim.diagnostic.severity.INFO] = "I",
+            [vim.diagnostic.severity.HINT] = "H",
           },
         },
         virtual_text = false,  -- Disable inline diagnostics
-        underline = true,     -- Keep underlining the problems
+        underline = true, -- Underline the problems
+        float = {
+          source = true,
+          severity_sort = true,
+          format = function(diagnostic)
+            local severity_names = {
+              [vim.diagnostic.severity.ERROR] = "Error",
+              [vim.diagnostic.severity.WARN] = "Warn",
+              [vim.diagnostic.severity.INFO] = "Info",
+              [vim.diagnostic.severity.HINT] = "Hint",
+            }
+            local severity = severity_names[diagnostic.severity] or "Unknown"
+            return string.format("[%s] %s", severity, diagnostic.message)
+          end,
+        },
       })
 
       -- LSP servers and clients are able to communicate to each other what features they support.
@@ -85,7 +99,23 @@ return {
             },
           },
         },
-        pyright = {},
+        pyright = {
+          settings = {
+            python = {
+              analysis = {
+                diagnosticSeverityOverrides = {
+                }
+              }
+            }
+          }
+        },
+        ruff = {
+          settings = {
+            lint = {
+              enable = true,
+            },
+          },
+        },
       }
 
       local ensure_installed = vim.tbl_keys(servers or {})
