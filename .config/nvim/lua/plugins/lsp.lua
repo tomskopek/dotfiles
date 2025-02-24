@@ -95,7 +95,10 @@ return {
               completion = {
                 callSnippet = 'Replace',
               },
-              diagnostics = { disable = { 'missing-fields' } }, -- Ignore Lua_LS's noisy `missing-fields` warnings
+              diagnostics = {
+                globals = { 'vim' }, -- Supress "undefined global vim" warning
+                disable = { 'missing-fields' } -- Ignore Lua_LS's noisy `missing-fields` warnings
+              },
             },
           },
         },
