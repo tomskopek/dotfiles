@@ -1,5 +1,5 @@
-require 'settings'
-require 'keymaps'
+require("settings")
+require("keymaps")
 
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
@@ -21,7 +21,7 @@ vim.opt.rtp:prepend(lazypath)
 -- Load plugins using lazy.nvim
 require("lazy").setup({
   spec = {
-    { import = 'plugins' },
+    { import = "plugins" },
   },
   change_detection = {
     notify = false, -- this notification that "config change detected" is annoying, and it doesn't seem to... do anything?
@@ -29,7 +29,6 @@ require("lazy").setup({
 })
 
 vim.cmd.colorscheme("kanagawa")
-
 
 -- TODO:
 --
@@ -50,6 +49,14 @@ vim.cmd.colorscheme("kanagawa")
 -- - Multiple cursors
 -- - Telescope nav search_history
 --
+-- Annoying things:
+-- ----------------
+-- - When I open toggleterm python or node, I can get into terminal "visual mode" sometimes (I'm not actually sure what it's called).
+--     It's not exactly clear what fat fingers typo I did to get there and I can't find it now... But it's quite annoying, and
+--     I don't know how to leave. I have to do :q and then exit vim session otherwise my python/node terminal is messed up
+-- - When I open a folder in telescope, the project directory changes (:pwd shows the folder that I opened). This means I cannot
+--     change find files using telescope anymore. I have to quit and reopen vim.
+--
 -- Try these out:
 -- --------------
 --
@@ -57,7 +64,7 @@ vim.cmd.colorscheme("kanagawa")
 -- Diagnostic keymaps
 --
 -- vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
--- 
+--
 --
 -- Credit: https://github.com/nvim-lua/kickstart.nvim/blob/master/init.lua#L169-L175
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
