@@ -30,6 +30,12 @@ return {
       end
       vim.api.nvim_set_keymap("n", "<leader>lp", "<cmd>lua _PYTHON_TOGGLE()<CR>", { noremap = true, silent = true, desc = "Toggle python" })
 
+      local node = Terminal:new({ cmd = "node", display_name = "node REPL", hidden = true, direction = "float" })
+      function _NODE_TOGGLE()
+        node:toggle()
+      end
+      vim.api.nvim_set_keymap("n", "<leader>lj", "<cmd>lua _NODE_TOGGLE()<CR>", { noremap = true, silent = true, desc = "Toggle node" })
+
       local ncdu = Terminal:new({ cmd = "ncdu", display_name = "ncdu", hidden = true, direction = "float" })
       function _NCDU_TOGGLE()
         ncdu:toggle()
