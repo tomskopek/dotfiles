@@ -127,6 +127,10 @@ return {
           },
         },
 
+        -- javascript/typescript
+        eslint = {
+        },
+
         -- typescript
         ts_ls = {
         },
@@ -139,6 +143,8 @@ return {
         'prettierd', -- js formatter
         'prettier', -- js formatter
       })
+
+      -- not sure if this is working... eslint did not get automatically installed, I had to do it manually in Mason
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
       require('mason-lspconfig').setup {
