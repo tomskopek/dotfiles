@@ -14,7 +14,10 @@ return {
     config = function()
       local cmp = require("cmp")
       local luasnip = require("luasnip")
-      luasnip.config.setup({})
+
+      luasnip.config.setup({
+        update_events = "TextChanged,TextChangedI",
+      })
 
       cmp.setup({
         snippet = {

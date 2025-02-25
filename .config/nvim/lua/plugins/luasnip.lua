@@ -19,23 +19,21 @@ return {
       },
     },
     config = function()
-      local ls = require("luasnip")
-      local fmt = require("luasnip.extras.fmt").fmt
-      local t, i, c, f = ls.text_node, ls.insert_node, ls.choice_node, ls.function_node
+      -- Important note: luasnip is already setup() in nvim-cmp
 
-      -- these dont seem to work!
-      --
-      -- vim.keymap.set({ "i" }, "<C-K>", function()
-      --   ls.expand()
-      -- end, { silent = true })
-      --
-      -- vim.keymap.set({ "i", "s" }, "<C-W>", function()
-      --   ls.jump(1)
-      -- end, { silent = true })
-      --
-      -- vim.keymap.set({ "i", "s" }, "<C-J>", function()
-      --   ls.jump(-1)
-      -- end, { silent = true })
+      local ls = require("luasnip")
+      local t, i, c = ls.text_node, ls.insert_node, ls.choice_node
+      local fmt = require("luasnip.extras.fmt").fmt
+      local extras = require("luasnip.extras")
+      local rep = extras.rep
+
+      vim.keymap.set({ "i", "s" }, "<C-N>", function()
+        ls.jump(1)
+      end, { silent = true })
+
+      vim.keymap.set({ "i", "s" }, "<C-P>", function()
+        ls.jump(-1)
+      end, { silent = true })
 
       vim.keymap.set({ "i", "s" }, "<C-E>", function()
         if ls.choice_active() then
@@ -43,18 +41,12 @@ return {
         end
       end, { silent = true })
 
-      local same = function(index)
-        return f(function(args)
-          return args[1]
-        end, { index })
-      end
-
       local console_log = ls.s(
         "clo",
         fmt("console.log({logmsg});", {
           logmsg = c(1, {
             i(1, "basic"),
-            ls.sn(1, { t("'"), i(1, "labelled"), t("', "), same(1) }),
+            { t("'"), rep(1), t("', "), i(1, "var") },
             ls.sn(1, { t("{ "), i(1, "object"), t(" }") }),
           }),
         })
