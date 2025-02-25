@@ -35,30 +35,35 @@ vim.cmd.colorscheme("kanagawa")
 --
 -- Must haves:
 -- ----------
--- remove false python import errors: ■ Import "django.db.models.expressions" could not be resolved
+-- - remove false python import errors: ■ Import "django.db.models.expressions" could not be resolved
 --    └─ This probably has something to do with conda environment?
--- Prettier (auto format)	conform.vim
--- Copilot
--- snippets - eg: expand ipdb, console.log, function() {}, etc etc
+-- - Prettier (auto format)	conform.vim
+-- - Copilot
 --
 -- Nice to haves:
 -- -------------
--- Autocomplete braces
--- I feel like indentation is not great? Need to study this some more and understand what actually needs to be improved
--- Documentation for word under cursor with ctrl+k
--- there's a bit of lag when lsp servers starting up?
--- Update dotfiles readme for setting up a new laptop
+-- - Autocomplete braces
+-- - I feel like indentation is not great? Need to study this some more and understand what actually needs to be improved
+-- - Documentation for word under cursor with ctrl+k
+-- - there's a bit of lag when lsp servers starting up?
+-- - Update dotfiles readme for setting up a new laptop
+-- - Multiple cursors
+-- - Telescope nav search_history
 --
 -- Try these out:
 -- --------------
 --
 -- Credit: https://github.com/nvim-lua/kickstart.nvim/blob/master/init.lua#L166-L167
 -- Diagnostic keymaps
+--
 -- vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+-- 
+--
 -- Credit: https://github.com/nvim-lua/kickstart.nvim/blob/master/init.lua#L169-L175
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
 -- is not what someone will guess without a bit more experience.
 -- NOTE: This won't work in all terminal emulators/tmux/etc. Try your own mapping
 -- or just use <C-\><C-n> to exit terminal mode
+--
 -- vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
