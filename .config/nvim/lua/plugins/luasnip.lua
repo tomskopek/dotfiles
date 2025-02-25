@@ -22,7 +22,7 @@ return {
       -- Important note: luasnip is already setup() in nvim-cmp
 
       local ls = require("luasnip")
-      local t, i, c = ls.text_node, ls.insert_node, ls.choice_node
+      local t, i, c, f = ls.text_node, ls.insert_node, ls.choice_node, ls.function_node
       local fmt = require("luasnip.extras.fmt").fmt
       local extras = require("luasnip.extras")
       local rep = extras.rep
@@ -35,7 +35,7 @@ return {
         ls.jump(-1)
       end, { silent = true })
 
-      vim.keymap.set({ "i", "s" }, "<C-E>", function()
+      vim.keymap.set({ "i", "s" }, "<c-y>", function()
         if ls.choice_active() then
           ls.change_choice(1)
         end
@@ -45,9 +45,10 @@ return {
         "clo",
         fmt("console.log({logmsg});", {
           logmsg = c(1, {
-            i(1, "basic"),
-            { t("'"), rep(1), t("', "), i(1, "var") },
+            { t("'"), i(1, "hello world"), t("'") },
             ls.sn(1, { t("{ "), i(1, "object"), t(" }") }),
+            { t("'"), rep(1), t("', "), i(1, "var") },
+            i(1, "basic"),
           }),
         })
       )
@@ -57,12 +58,8 @@ return {
         ls.add_snippets(lang, { console_log })
       end
 
-      local ipdb = ls.s(
-        "ipst",
-        t("__import__('ipdb').set_trace()")
-      )
+      local ipdb = ls.s("ipst", t("__import__('ipdb').set_trace()"))
       ls.add_snippets("python", { ipdb })
-
     end,
   },
 }
