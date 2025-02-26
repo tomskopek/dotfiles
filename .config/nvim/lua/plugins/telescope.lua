@@ -17,18 +17,20 @@ return {
   },
   config = function()
     local telescope = require("telescope")
+
     telescope.setup({
       defaults = {
         file_ignore_patterns = { "%.git/", "node_modules/" },
         path_display = { "truncate" }, -- When filenames are too long, truncate the start of the path
+        prompt_prefix = "",
       },
       pickers = {
-        find_files = {
-          find_command = { "fd", "--type", "f", "--type", "d" }, -- Inlcude both files and folders
-        },
         buffers = {
           sort_mru = true, -- Sort by most recently used
           ignore_current_buffer = true, -- Don't show the current buffer
+        },
+        find_files = {
+          find_command = { "fd", "--type", "f", "--hidden" }, -- Use fd, include hidden files
         },
       },
     })
