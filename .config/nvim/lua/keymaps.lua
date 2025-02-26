@@ -5,7 +5,12 @@ vim.keymap.set("n", "<Leader>cw", "m`:%s/\\s\\+$//e<CR>``", { silent = true, des
 
 vim.keymap.set("n", "<Leader>yf", function()
   vim.fn.setreg("+", vim.fn.expand("%:p"))
-end, { silent = true, desc = "Yank full file path to clipboard" })
+end, { silent = true, desc = "[Y]ank full [F]ile path to clipboard" })
+
+vim.keymap.set("n", "<Leader>ydf", function()
+  vim.fn.setreg("+", vim.fn.expand("%:r"):gsub("/", "."))
+end, { silent = true, desc = "[Y]ank [D]otted relative [F]ile path to clipboard" })
+
 
 -- Hint: To discover what other actions are possible for the word under cursor:
 -- :lua vim.lsp.buf.code_action({ filter = function(a) print(vim.inspect(a)) return false end })
@@ -17,14 +22,19 @@ vim.keymap.set("n", "<leader>i", function()
     end,
     apply = true,
   })
-end, { desc = "Auto-import missing symbols", silent = true })
+end, { desc = "auto-[I]mport missing symbols", silent = true })
 
-vim.keymap.set("n", "<leader>qs", function() require("persistence").load() end, { desc = "Load the session for the current directory" })
+vim.keymap.set("n", "<leader>qs", function() require("persistence").load() end, { desc = "[Q] load the last [S]ession for the current directory" })
 
 -- show error under cursor
 vim.keymap.set('n', '<leader>er', function()
   vim.diagnostic.open_float(nil, { focusable = false, border = "rounded" })
-end, { desc = "Show diagnostics in a floating window" })
+end, { desc = "Show diagnostics/[E][R]rors in a floating window" })
+
+-- Quickfix
+-- --------
+vim.keymap.set('n', '<leader>cj', "<cmd>cnext<CR>", { desc = "qui[C]kfix [J] next" } )
+vim.keymap.set('n', '<leader>ck', "<cmd>cprev<CR>", { desc = "qui[C]kfix [K] prev" } )
 
 
 -- some tools for debugging syntax highlighting, maybe delete later
