@@ -5,11 +5,11 @@ return {
   dependencies = {
     "nvim-lua/plenary.nvim",
     { "nvim-telescope/telescope-fzf-native.nvim", build = "make" }, -- Use fzf for fuzzy matching
+    { "nvim-telescope/telescope-live-grep-args.nvim", version = "^1.0.0" }, -- Refine live_grep with ripgrep args
   },
   keys = {
     { "<C-p>", "<cmd>Telescope find_files<cr>", desc = "[S]earch [F]iles" },
     { "<C-b>", "<cmd>Telescope buffers<cr>", desc = "[S]earch [B]uffers" },
-    { "\\", "<cmd>Telescope live_grep<cr>", desc = "Grep search" },
     { "<leader>sh", "<cmd>Telescope help_tags<cr>", desc = "[S]earch [H]elp" },
     { "<leader>sj", "<cmd>Telescope jumplist<cr>", desc = "[S]earch [J]umplist" },
     { "<leader>sk", "<cmd>Telescope keymaps<cr>", desc = "[S]earch [K]eymaps" },
@@ -17,12 +17,22 @@ return {
   },
   config = function()
     local telescope = require("telescope")
+    local lga_actions = require("telescope-live-grep-args.actions")
 
     telescope.setup({
       defaults = {
         file_ignore_patterns = { "%.git/", "node_modules/" },
         path_display = { "truncate" }, -- When filenames are too long, truncate the start of the path
         prompt_prefix = "",
+        mappings = {
+          i = {
+            ["<C-h>"] = require('telescope.actions').preview_scrolling_left,
+            ["<C-j>"] = require('telescope.actions').preview_scrolling_down,
+            ["<C-k>"] = require('telescope.actions').preview_scrolling_up,
+            ["<C-l>"] = require('telescope.actions').preview_scrolling_right,
+            ["<C-f>"] = require('telescope.actions').to_fuzzy_refine,
+          }
+        },
       },
       pickers = {
         buffers = {
@@ -33,11 +43,27 @@ return {
           find_command = { "fd", "--type", "f", "--hidden" }, -- Use fd, include hidden files
         },
       },
+      extensions = {
+        live_grep_args = {
+          auto_quoting = false, -- if set to false == automatically quote the first word
+          mappings = {
+            i = {
+              -- ["<C-u>"] = lga_actions.quote_prompt(),
+              ["<C-i>"] = lga_actions.quote_prompt({ postfix = " --iglob " }),
+            },
+          },
+        },
+      },
     })
 
     telescope.load_extension("fzf")
+    telescope.load_extension("live_grep_args")
 
     local builtin = require("telescope.builtin")
+
+    vim.keymap.set("n", "\\", ":lua require('telescope').extensions.live_grep_args.live_grep_args()<CR>", {
+      desc = "[\\] Grep",
+    })
 
     -- Slightly advanced example of overriding default behavior and theme
     vim.keymap.set("n", "<leader>/", function()
