@@ -30,8 +30,16 @@ return {
               gitsigns.nav_hunk('prev')
             end
           end)
-        end,
-      })
-    end,
-  }
+
+          map('n', '<leader>gph', gitsigns.preview_hunk, {
+            desc = '[G]it [P]review [H]unk'
+          })
+
+          map('n', '<leader>gb', gitsigns.blame,  {
+            desc = '[G]it [B]lame'
+          })
+      end,
+    })
+  end,
+}
 }
