@@ -23,7 +23,7 @@ return {
           "python",
           "javascript",
           "typescript",
-          "tsx"
+          "tsx",
         },
 
         sync_install = false,
@@ -78,15 +78,14 @@ return {
               ["as"] = { query = "@local.scope", query_group = "locals", desc = "Select language scope" },
             },
             selection_modes = {
-              ['@parameter.outer'] = 'v',
-              ['@function.outer'] = 'v',
-              ['@class.outer'] = '<c-v>',
+              ["@parameter.outer"] = "v",
+              ["@function.outer"] = "v",
+              ["@class.outer"] = "<c-v>",
             },
           },
         },
-
       })
-    end
+    end,
   },
 }
 

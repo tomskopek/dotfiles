@@ -26,12 +26,12 @@ return {
         prompt_prefix = "",
         mappings = {
           i = {
-            ["<C-h>"] = require('telescope.actions').preview_scrolling_left,
-            ["<C-j>"] = require('telescope.actions').preview_scrolling_down,
-            ["<C-k>"] = require('telescope.actions').preview_scrolling_up,
-            ["<C-l>"] = require('telescope.actions').preview_scrolling_right,
-            ["<C-f>"] = require('telescope.actions').to_fuzzy_refine,
-          }
+            ["<C-h>"] = require("telescope.actions").preview_scrolling_left,
+            ["<C-j>"] = require("telescope.actions").preview_scrolling_down,
+            ["<C-k>"] = require("telescope.actions").preview_scrolling_up,
+            ["<C-l>"] = require("telescope.actions").preview_scrolling_right,
+            ["<C-f>"] = require("telescope.actions").to_fuzzy_refine,
+          },
         },
       },
       pickers = {

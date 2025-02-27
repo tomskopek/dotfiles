@@ -9,8 +9,8 @@ return {
     "nvim-tree/nvim-tree.lua",
     enabled = true,
     keys = {
-      { "<leader>t", '<cmd>NvimTreeToggle<cr>', desc = 'Toggle File Explorer' },
-      { "<leader>f", '<cmd>NvimTreeFindFile<cr>', desc = 'Find file in File Explorer' },
+      { "<leader>t", "<cmd>NvimTreeToggle<cr>", desc = "Toggle File Explorer" },
+      { "<leader>f", "<cmd>NvimTreeFindFile<cr>", desc = "Find file in File Explorer" },
     },
     config = function()
       require("nvim-tree").setup({
@@ -31,7 +31,7 @@ return {
             if bufname:match("NvimTree_") ~= nil then
               table.insert(tree_wins, w)
             end
-            if vim.api.nvim_win_get_config(w).relative ~= '' then
+            if vim.api.nvim_win_get_config(w).relative ~= "" then
               table.insert(floating_wins, w)
             end
           end
@@ -41,10 +41,8 @@ return {
               vim.api.nvim_win_close(w, true)
             end
           end
-        end
+        end,
       })
-
     end,
   },
 }
-
