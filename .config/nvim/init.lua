@@ -41,7 +41,6 @@ vim.cmd.colorscheme("kanagawa")
 -- Nice to haves:
 -- -------------
 -- - Open visually selected lines of code in github.com
--- - Autocomplete braces
 -- - I feel like indentation is not great? Need to study this some more and understand what actually needs to be improved
 -- - Documentation for word under cursor with ctrl+k
 -- - there's a bit of lag when lsp servers starting up?
