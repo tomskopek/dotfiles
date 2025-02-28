@@ -45,10 +45,10 @@ return {
       },
       extensions = {
         live_grep_args = {
-          auto_quoting = false, -- if set to false == automatically quote the first word
+          -- auto_quoting = false, -- if set to false == automatically quote the first word
           mappings = {
             i = {
-              -- ["<C-u>"] = lga_actions.quote_prompt(),
+              ["<C-u>"] = lga_actions.quote_prompt(),
               ["<C-i>"] = lga_actions.quote_prompt({ postfix = " --iglob " }),
             },
           },
@@ -77,5 +77,10 @@ return {
     vim.keymap.set("n", "<leader>ev", function()
       builtin.find_files({ cwd = vim.fn.stdpath("config") })
     end, { desc = "[E]dit neo[V]im files" })
+
+    vim.keymap.set("n", "<leader>sv", function()
+      builtin.live_grep({ cwd = vim.fn.stdpath("config") })
+    end, { desc = "[S]dit neo[V]im files" })
+
   end,
 }
