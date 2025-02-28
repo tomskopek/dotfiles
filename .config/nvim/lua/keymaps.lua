@@ -1,13 +1,22 @@
 -- Hint: To discover _where_ a keymap is being set:
 -- :verbose map <leader>ev
 
-vim.keymap.set("n", "<Leader>cw", "m`:%s/\\s\\+$//e<CR>``", { silent = true, desc = "Clear trailing whitespaces" })
+-- Buffers
+vim.keymap.set("n", "<leader>x", "<cmd>bd<CR>", { silent = true, desc = "Close current buffer" })
 
-vim.keymap.set("n", "<Leader>yf", function()
+vim.keymap.set("n", "<leader>qs", function()
+  require("persistence").load()
+end, { desc = "[Q] load the last [S]ession for the current directory" })
+
+-- Formatting
+vim.keymap.set("n", "<leader>cw", "m`:%s/\\s\\+$//e<CR>``", { silent = true, desc = "Clear trailing whitespaces" })
+
+-- Yanking
+vim.keymap.set("n", "<leader>yf", function()
   vim.fn.setreg("+", vim.fn.expand("%:p"))
 end, { silent = true, desc = "[Y]ank full [F]ile path to clipboard" })
 
-vim.keymap.set("n", "<Leader>ydf", function()
+vim.keymap.set("n", "<leader>ydf", function()
   vim.fn.setreg("+", vim.fn.expand("%:r"):gsub("/", "."))
 end, { silent = true, desc = "[Y]ank [D]otted relative [F]ile path to clipboard" })
 
@@ -26,10 +35,6 @@ vim.keymap.set("n", "<leader>i", function()
   })
 end, { desc = "auto-[I]mport missing symbols", silent = true })
 
-vim.keymap.set("n", "<leader>qs", function()
-  require("persistence").load()
-end, { desc = "[Q] load the last [S]ession for the current directory" })
-
 -- show error under cursor
 vim.keymap.set("n", "<leader>er", function()
   vim.diagnostic.open_float(nil, { focusable = false, border = "rounded" })
@@ -37,8 +42,8 @@ end, { desc = "Show diagnostics/[E][R]rors in a floating window" })
 
 -- Quickfix
 -- --------
-vim.keymap.set("n", "<leader>cj", "<cmd>cnext<CR>", { desc = "qui[C]kfix [J] next" })
-vim.keymap.set("n", "<leader>ck", "<cmd>cprev<CR>", { desc = "qui[C]kfix [K] prev" })
+vim.keymap.set("n", "]q", "<cmd>cnext<CR>", { desc = "quickfix next" })
+vim.keymap.set("n", "[q", "<cmd>cprev<CR>", { desc = "quickfix prev" })
 vim.keymap.set("n", "<leader>cc", function()
   local qf_exists = false
   for _, win in ipairs(vim.fn.getwininfo()) do
@@ -54,7 +59,7 @@ vim.keymap.set("n", "<leader>cc", function()
   end
 
   vim.notify(string.format("quickfix exists? [%s]", qf_exists))
-end, { desc = "[C][C] toggle quickfix window" })
+end, { desc = "toggle quickfix window" })
 
 -- some tools for debugging syntax highlighting, maybe delete later
 vim.keymap.set("n", "<leader>hi", function()
