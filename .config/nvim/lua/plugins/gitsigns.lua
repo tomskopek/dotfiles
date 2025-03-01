@@ -21,7 +21,7 @@ return {
             else
               gitsigns.nav_hunk("next")
             end
-          end)
+          end, { desc = "]c next quickfix" })
 
           map("n", "[c", function()
             if vim.wo.diff then
@@ -29,7 +29,7 @@ return {
             else
               gitsigns.nav_hunk("prev")
             end
-          end)
+          end, { desc = "[c previous quickfix" })
 
           map("n", "<leader>gph", gitsigns.preview_hunk, {
             desc = "[G]it [P]review [H]unk",
