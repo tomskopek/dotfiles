@@ -6,14 +6,20 @@ vim.g.maplocalleader = " "
 -- Basic options
 vim.opt.number = true -- Absolute line numbers in the gutter
 vim.opt.relativenumber = false -- Disable relative line numbers
-vim.opt.expandtab = true -- Spaces instead of tabs
-vim.opt.shiftwidth = 2 -- Number of spaces for each indentation level
-vim.opt.tabstop = 2 -- Number of spaces a tab character represents
 vim.opt.termguicolors = true -- Enable true color support (better color rendering in terminals that support it)
 vim.opt.wrap = false -- Don't wrap long lines
 vim.opt.virtualedit = "block" -- In Visual block mode, cursor can be positioned anywhere (even if there is no character there)
 vim.opt.signcolumn = "yes" -- Keep the sign column always open
+
+-- Visual indicators
 vim.opt.cursorline = false -- Show which line your cursor is on
+vim.opt.list = true -- Show listchars
+vim.opt.listchars = "trail:·" -- Trailing spaces are represented as ·
+
+-- Tabs
+vim.opt.expandtab = true -- Spaces instead of tabs
+vim.opt.shiftwidth = 2 -- Number of spaces for each indentation level
+vim.opt.tabstop = 2 -- Number of spaces a tab character represents
 
 -- Use system clipboard
 --   Schedule the setting after `UiEnter` because it can increase startup-time.
