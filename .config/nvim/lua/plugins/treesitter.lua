@@ -24,6 +24,7 @@ return {
           "javascript",
           "typescript",
           "tsx",
+          "html",
         },
 
         sync_install = false,
@@ -81,6 +82,21 @@ return {
               ["@parameter.outer"] = "v",
               ["@function.outer"] = "v",
               ["@class.outer"] = "<c-v>",
+            },
+          },
+          move = {
+            enable = true,
+            goto_next_start = {
+              ["]f"] = "@function.outer",
+            },
+            goto_next_end = {
+              ["]F"] = "@function.outer",
+            },
+            goto_previous_start = {
+              ["[f"] = "@function.outer",
+            },
+            goto_previous_end = {
+              ["[F"] = "@function.outer",
             },
           },
         },
