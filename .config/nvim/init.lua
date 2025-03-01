@@ -53,8 +53,12 @@ vim.cmd.colorscheme("kanagawa")
 -- - When I open toggleterm python or node, I can get into terminal "visual mode" sometimes (I'm not actually sure what it's called).
 --     It's not exactly clear what fat fingers typo I did to get there and I can't find it now... But it's quite annoying, and
 --     I don't know how to leave. I have to do :q and then exit vim session otherwise my python/node terminal is messed up
+--        -> I figured it out! If you click away (to something outside of iterm2) and then click back in iterm2 with the python 
+--            terminal open inside of nvim, this gets you into this mode. To exit this mode, press "i" (insert mode)
 -- - When I open a folder in telescope, the project directory changes (:pwd shows the folder that I opened). This means I cannot
 --     change find files using telescope anymore. I have to quit and reopen vim.
+-- - When doing "get references for word under cursor", I dont really care about imports...
+-- - auto-indent not working well in some python files. Eg: panel_task -> try adding a new line and then == to autoalign it
 --
 -- Try these out:
 -- --------------
