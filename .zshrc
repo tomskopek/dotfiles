@@ -1,3 +1,7 @@
+if [[ -n "$ZSH_DEBUGRC" ]]; then # credit: https://gist.github.com/elalemanyo/cb3395af64ac23df2e0c3ded8bd63b2f
+  zmodload zsh/zprof
+fi
+
 export ZSH=~/.oh-my-zsh
 
 ZSH_THEME="robbyrussell"
@@ -19,6 +23,8 @@ else
 fi
 
 bindkey '^ ' autosuggest-accept
+
+alias zsht='time ZSH_DEBUGRC=1 zsh -i -c exit'
 
 alias vi='nvim'
 alias vim='nvim'
@@ -148,3 +154,7 @@ IPDB_CONFIG=~/dev/dotfiles/setup.cfg
 export PATH="/usr/local/opt/postgresql@15/bin:$PATH"
 
 export PATH="/opt/homebrew/opt/postgresql@15/bin:$PATH"
+
+if [[ -n "$ZSH_DEBUGRC" ]]; then
+  zprof
+fi
