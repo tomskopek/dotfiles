@@ -149,6 +149,7 @@ IPDB_CONFIG=~/dev/dotfiles/setup.cfg
 export PATH="/usr/local/opt/postgresql@15/bin:$PATH"
 
 export PATH="/opt/homebrew/opt/postgresql@15/bin:$PATH"
+eval "$(/Users/tom/.local/bin/mise activate zsh)"
 
 if [[ -n "$ZSH_DEBUGRC" ]]; then
   zprof
