@@ -108,12 +108,12 @@ export LANG=en_US.UTF-8
 
 source /Users/tom/.oh-my-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
-
-source /opt/homebrew/opt/chruby/share/chruby/chruby.sh
-
-source /opt/homebrew/opt/chruby/share/chruby/auto.sh
-
-chruby ruby-3.1.1
+lazy_chruby() {
+  source /opt/homebrew/opt/chruby/share/chruby/chruby.sh
+  source /opt/homebrew/opt/chruby/share/chruby/auto.sh
+  chruby ruby-3.1.1
+}
+alias chruby=lazy_chruby
 
 # The next line updates PATH for the Google Cloud SDK.
 if [ -f '/Users/tom/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/tom/google-cloud-sdk/path.zsh.inc'; fi
