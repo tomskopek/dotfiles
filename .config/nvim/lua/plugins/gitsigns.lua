@@ -31,12 +31,16 @@ return {
             end
           end, { desc = "[c previous quickfix" })
 
-          map("n", "<leader>gph", gitsigns.preview_hunk, {
-            desc = "[G]it [P]review [H]unk",
+          map("n", "<leader>gd", gitsigns.preview_hunk, {
+            desc = "[G]it [D]iff (preview hunk)",
           })
 
           map("n", "<leader>gb", gitsigns.blame, {
             desc = "[G]it [B]lame",
+          })
+
+          map("n", "<leader>gr", gitsigns.reset_hunk, {
+            desc = "[G]it [R]eset hunk",
           })
         end,
       })
