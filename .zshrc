@@ -26,6 +26,8 @@ bindkey '^ ' autosuggest-accept
 
 alias zsht='time ZSH_DEBUGRC=1 zsh -i -c exit'
 
+alias todos='vim ~/Documents/todo.md'
+
 alias vi='nvim'
 alias vim='nvim'
 
