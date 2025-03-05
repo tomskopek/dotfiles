@@ -28,21 +28,18 @@ require("lazy").setup({
   },
 })
 
-vim.cmd.colorscheme("kanagawa")
+vim.cmd.colorscheme("tokyonight")
 
 -- TODO:
 --
 -- Must haves:
 -- ----------
--- - remove false python import errors: ■ Import "django.db.models.expressions" could not be resolved
---    └─ This probably has something to do with conda environment?
 -- - Copilot
 --
 -- Nice to haves:
 -- -------------
 -- - Open visually selected lines of code in github.com
 -- - I feel like indentation is not great? Need to study this some more and understand what actually needs to be improved
--- - Documentation for word under cursor with ctrl+k
 -- - there's a bit of lag when lsp servers starting up?
 -- - Update dotfiles readme for setting up a new laptop
 -- - Multiple cursors
