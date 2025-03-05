@@ -1,3 +1,4 @@
+# Profiling startup time
 if [[ -n "$ZSH_DEBUGRC" ]]; then # credit: https://gist.github.com/elalemanyo/cb3395af64ac23df2e0c3ded8bd63b2f
   zmodload zsh/zprof
 fi
@@ -79,7 +80,6 @@ alias andurl='f() { npx uri-scheme open $1 --android };f'
 case "$OSTYPE" in
   darwin*)
     source "${ZDOTDIR:-${HOME}}/.zshrc-mac"
-    source "${ZDOTDIR:-${HOME}}/.zshrc-anaconda"
   ;;
   linux*)
     source "${ZDOTDIR:-${HOME}}/.zshrc-ubuntu"
@@ -123,23 +123,18 @@ if [ -f '/Users/tom/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/tom/google-
 # The next line enables shell command completion for gcloud.
 if [ -f '/Users/tom/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/tom/google-cloud-sdk/completion.zsh.inc'; fi
 
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/Users/tom/anaconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+# >>> mamba initialize >>>
+# !! Contents within this block are managed by 'micromamba shell init' !!
+export MAMBA_EXE='/opt/homebrew/bin/micromamba';
+export MAMBA_ROOT_PREFIX='/Users/tom/.local/share/mamba';
+__mamba_setup="$("$MAMBA_EXE" shell hook --shell zsh --root-prefix "$MAMBA_ROOT_PREFIX" 2> /dev/null)"
 if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
+    eval "$__mamba_setup"
 else
-    if [ -f "/Users/tom/anaconda3/etc/profile.d/conda.sh" ]; then
-        . "/Users/tom/anaconda3/etc/profile.d/conda.sh"
-    else
-        export PATH="/Users/tom/anaconda3/bin:$PATH"
-    fi
+    alias micromamba="$MAMBA_EXE"  # Fallback on help from micromamba activate
 fi
-unset __conda_setup
-# <<< conda initialize <<<
-
-# add conda to PATH
-export PATH="$PATH:/Users/tom/anaconda3/bin"
+unset __mamba_setup
+# <<< mamba initialize <<<
 
 # django
 alias removemigration="git status | grep migrations/ | awk '{print $NF}'"
@@ -153,6 +148,7 @@ export PATH="/usr/local/opt/postgresql@15/bin:$PATH"
 export PATH="/opt/homebrew/opt/postgresql@15/bin:$PATH"
 eval "$(/Users/tom/.local/bin/mise activate zsh)"
 
+# End of profiling zsh
 if [[ -n "$ZSH_DEBUGRC" ]]; then
   zprof
 fi
