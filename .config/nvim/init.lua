@@ -35,6 +35,7 @@ vim.cmd.colorscheme("tokyonight")
 -- Must haves:
 -- ----------
 -- - Copilot
+-- - Auto fix imports on command, or even better when I commit (is that possible to setup?)
 --
 -- Nice to haves:
 -- -------------
@@ -56,6 +57,8 @@ vim.cmd.colorscheme("tokyonight")
 --     change find files using telescope anymore. I have to quit and reopen vim.
 -- - When doing "get references for word under cursor", I dont really care about imports...
 -- - auto-indent not working well in some python files. Eg: panel_task -> try adding a new line and then == to autoalign it
+-- - sometimes I get into a funky state when quickfix or filetree is open, and I want to close current buffer. It's like the quickfix or filetree
+--     "take over" the screen
 --
 -- Try these out:
 -- --------------
