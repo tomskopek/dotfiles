@@ -51,6 +51,9 @@ alias dotfiles='cd ~/dev/dotfiles'
 alias pkj='vim package.json'
 alias ys='yarn start'
 
+# --- Python
+alias python=python3
+
 # --- TopHouse
 alias th='cd ~/dev/tophouse/'
 alias tmo='cd ~/dev/tophouse/packages/mobile/'
@@ -95,9 +98,6 @@ export PATH=$PATH:$ANDROID_HOME/platform-tools
 
 set rtp+=/usr/local/opt/fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-
-# ------------- pyenv -------------------
-#eval "$(pyenv init -)"
 
 # ------------- askpass
 #export SUDO_ASKPASS=/usr/bin/ssh-askpass
