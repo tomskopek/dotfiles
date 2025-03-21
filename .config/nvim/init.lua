@@ -36,6 +36,8 @@ vim.cmd.colorscheme("tokyonight")
 -- ----------
 -- - Copilot
 -- - Auto fix imports on command, or even better when I commit (is that possible to setup?)
+-- - Go to definition not working for css (styles.xyz)
+-- - Commenting out react components
 --
 -- Nice to haves:
 -- -------------
@@ -59,6 +61,8 @@ vim.cmd.colorscheme("tokyonight")
 -- - auto-indent not working well in some python files. Eg: panel_task -> try adding a new line and then == to autoalign it
 -- - sometimes I get into a funky state when quickfix or filetree is open, and I want to close current buffer. It's like the quickfix or filetree
 --     "take over" the screen
+-- - exiting telescope sucks. If I enter and type nothing, I'm in insert mode. I'd like to press esc to leave. I have to press ctrl+c or esc twice. 
+--     But If I press esc once to go to normal mode, ctrl+c no longer exits.
 --
 -- Try these out:
 -- --------------
