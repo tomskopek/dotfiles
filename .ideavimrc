@@ -35,6 +35,8 @@ nmap <leader>x :action CloseContent<CR>
 " nmap <c-w> :action CloseContent<CR>
 nmap <leader>f :action SelectInProjectView<CR>
 nmap <leader>g :action GotoDeclaration<CR>
+nmap gd :action GotoDeclaration<CR>
+nmap gr :action FindUsages<CR>
 nmap <leader>b :action Annotate<CR>
 " nmap <leader>p :action ReformatWithPrettierAction<CR>
 nmap <leader>p :action ReformatCode<CR>
