@@ -2,7 +2,9 @@
 -- :verbose map <leader>ev
 
 -- Buffers
-vim.keymap.set("n", "<leader>x", "<cmd>bd<CR>", { silent = true, desc = "Close current buffer" })
+vim.keymap.set("n", "<leader>x", "<cmd>bd<CR>", { silent = true, desc = "[X] Close Current Buffer" })
+vim.keymap.set("n", "[b", "<cmd>bprev<CR>", { silent = true, desc = "([) Previous [B]uffer" })
+vim.keymap.set("n", "]b", "<cmd>bnext<CR>", { silent = true, desc = "(]) Next [B]uffer" })
 
 vim.keymap.set("n", "<leader>qs", function()
   require("persistence").load()
