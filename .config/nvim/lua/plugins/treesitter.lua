@@ -29,11 +29,11 @@ return {
 
         sync_install = false,
 
-        auto_install = false, -- if you enter a file for which you don't have a parser installed yet, install the corresponding parser
+        auto_install = false, -- If you enter a file for which you don't have a parser installed yet, install the corresponding parser
 
         highlight = {
           enable = true,
-          -- disable slow treesitter highlight for large files
+          -- Disable slow treesitter highlight for large files
           disable = function(lang, buf)
             local max_filesize = 100 * 1024 -- 100 KB
             local ok, stats = pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(buf))
@@ -41,14 +41,17 @@ return {
               return true
             end
           end,
-          additional_vim_regex_highlighting = false,
+
+          -- This fixes an issue where comments with non-matching braces
+          --   mess up indentation in python
+          --   see: https://github.com/nvim-treesitter/nvim-treesitter/issues/1573
+          additional_vim_regex_highlighting = { "python" },
         },
 
         indent = {
-          -- TODO: figure out exactly how this interacts before enabling it
-          --   especially, understanding how it conflicts with nvim's default
+          -- TODO: Better understand how this conflicts with nvim's default
           --   filetype-based indentation
-          enable = false,
+          enable = true,
         },
 
         incremental_selection = {
@@ -63,7 +66,7 @@ return {
 
         textobjects = {
           -- This is a great tutorial:
-          -- https://www.youtube.com/watch?v=ff0GYrK3nT0&list=PLx2ksyallYzW4WNYHD9xOFrPRYGlntAft&index=5
+          --   https://www.youtube.com/watch?v=ff0GYrK3nT0&list=PLx2ksyallYzW4WNYHD9xOFrPRYGlntAft&index=5
           select = {
             enable = true,
             lookahead = true, -- Automatically jump forward to textobj, similar to targets.vim
