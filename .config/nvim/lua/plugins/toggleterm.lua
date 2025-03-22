@@ -30,7 +30,7 @@ return {
         { noremap = true, silent = true, desc = "Toggle lazygit" }
       )
 
-      local python = Terminal:new({ cmd = "python", display_name = "python REPL", hidden = true, direction = "float" })
+      local python = Terminal:new({ cmd = "python3", display_name = "python REPL", hidden = true, direction = "float" })
       function _PYTHON_TOGGLE()
         python:toggle()
       end
