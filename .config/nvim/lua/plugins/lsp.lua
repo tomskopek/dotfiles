@@ -109,12 +109,51 @@ return {
         },
 
         -- python
-        pyright = {
+        basedpyright = {
           settings = {
-            python = {
-              analysis = {
-                ignore = { "*" }, -- using ruff
-              },
+            -- TODO: This linting section is a bit of a mess.
+            -- I see way too many warnings, that I don't intend to fix.
+            -- I want to disable some of these warnings.
+            -- 1) Does this actually disable the warnings? (does it even have any effect)
+            -- 2) Do I really want to disable it at the vim level? or should it always be at the project level
+            --
+            basedpyright = {
+              typeCheckingMode = "off",
+              -- diagnosticSeverityOverrides = {
+              --   reportGeneralTypeIssues = "none",
+              --   reportOptionalMemberAccess = "none",
+              --   reportOptionalSubscript = "none",
+              --   reportPrivateImportUsage = "none",
+              --   reportUnnecessaryCast = "none",
+              --   reportUnnecessaryComparison = "none",
+              --   reportUnnecessaryIsInstance = "none",
+              --   reportAssertAlwaysTrue = "none",
+              --   reportCallInDefaultInitializer = "none",
+              --   reportConstantRedefinition = "none",
+              --   reportDeprecated = "none",
+              --   reportImplicitOverride = "none",
+              --   reportImplicitStringConcatenation = "none",
+              --   reportIncompleteStub = "none",
+              --   reportInvalidStringEscapeSequence = "none",
+              --   reportInvalidTypeVarUse = "none",
+              --   reportMatchNotExhaustive = "none",
+              --   reportMissingSuperCall = "none",
+              --   reportOverlappingOverload = "none",
+              --   reportPrivateUsage = "none",
+              --   reportSelfClsParameterName = "none",
+              --   reportShadowedImports = "none",
+              --   reportTypeCommentUsage = "none",
+              --   reportTypedDictNotRequiredAccess = "none",
+              --   reportUnknownLambdaType = "none",
+              --   reportUnnecessaryTypeIgnoreComment = "none",
+              --   reportUnusedExpression = "none",
+              --   reportUnusedFunction = "none",
+              --   reportUnusedImport = "none",
+              --   reportUnusedVariable = "none",
+              -- },
+              -- analysis = {
+              --   ignore = { "*" }, -- using ruff
+              -- },
             },
           },
         },
@@ -149,6 +188,10 @@ return {
         automatic_installation = false,
         handlers = {
           function(server_name)
+            -- It seems like every lsp server (for every language) is being setup when I open any file
+            -- 1) Is that what's actaully happening?
+            -- 2) Is that desired behaviour?
+            -- print(server_name)
             local server = servers[server_name] or {}
             -- This handles overriding only values explicitly passed
             -- by the server configuration above. Useful when disabling
