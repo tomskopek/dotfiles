@@ -7,6 +7,8 @@ return {
     "nvim-lua/plenary.nvim",
     { "nvim-telescope/telescope-fzf-native.nvim", build = "make" }, -- Use fzf for fuzzy matching
     { "nvim-telescope/telescope-live-grep-args.nvim", version = "^1.0.0" }, -- Refine live_grep with ripgrep args
+    { "kkharji/sqlite.lua" }, -- Required for telescope-smart-history
+    { "nvim-telescope/telescope-smart-history.nvim" }, -- Context aware search history (switching projects gives different history)
   },
   keys = {
     { "<C-p>", "<cmd>Telescope find_files<cr>", desc = "[S]earch [F]iles" },
@@ -23,6 +25,7 @@ return {
     telescope.setup({
       defaults = {
         file_ignore_patterns = { "%.git/", "node_modules/" },
+        preview = false,
         path_display = { "truncate" }, -- When filenames are too long, truncate the start of the path
         prompt_prefix = "",
         mappings = {
@@ -32,8 +35,15 @@ return {
             ["<C-k>"] = require("telescope.actions").preview_scrolling_up,
             ["<C-l>"] = require("telescope.actions").preview_scrolling_right,
             ["<C-f>"] = require("telescope.actions").to_fuzzy_refine,
+            ["<C-]>"] = require("telescope.actions").cycle_history_next,
+            ["<C-[>"] = require("telescope.actions").cycle_history_prev,
           },
         },
+        history = {
+          -- telescope-smart-history
+          path = '~/.local/share/nvim/databases/telescope_history.sqlite3',
+          limit = 100,
+        }
       },
       pickers = {
         buffers = {
@@ -41,6 +51,7 @@ return {
           ignore_current_buffer = true, -- Don't show the current buffer
         },
         find_files = {
+          -- find_command = { "fd", "--type", "f" }, -- Use fd, DONT include hidden files
           find_command = { "fd", "--type", "f", "--hidden" }, -- Use fd, include hidden files
         },
       },
@@ -59,6 +70,7 @@ return {
 
     telescope.load_extension("fzf")
     telescope.load_extension("live_grep_args")
+    telescope.load_extension("smart_history")
 
     local builtin = require("telescope.builtin")
 
@@ -82,6 +94,5 @@ return {
     vim.keymap.set("n", "<leader>sv", function()
       builtin.live_grep({ cwd = vim.fn.stdpath("config") })
     end, { desc = "[S]dit neo[V]im files" })
-
   end,
 }
