@@ -21,29 +21,45 @@ return {
   config = function()
     local telescope = require("telescope")
     local lga_actions = require("telescope-live-grep-args.actions")
-
     telescope.setup({
       defaults = {
         file_ignore_patterns = { "%.git/", "node_modules/" },
-        preview = false,
+        preview = {
+          hide_on_startup = true,
+        },
         path_display = { "truncate" }, -- When filenames are too long, truncate the start of the path
         prompt_prefix = "",
         mappings = {
           i = {
+            ["<C-j>"] = require("telescope.actions").move_selection_next,
+            ["<C-k>"] = require("telescope.actions").move_selection_previous,
+            ["<C-s>"] = require("telescope.actions.layout").toggle_preview,
             ["<C-h>"] = require("telescope.actions").preview_scrolling_left,
-            ["<C-j>"] = require("telescope.actions").preview_scrolling_down,
-            ["<C-k>"] = require("telescope.actions").preview_scrolling_up,
+            -- ["<C-j>"] = require("telescope.actions").preview_scrolling_down,
+            -- ["<C-k>"] = require("telescope.actions").preview_scrolling_up,
             ["<C-l>"] = require("telescope.actions").preview_scrolling_right,
             ["<C-f>"] = require("telescope.actions").to_fuzzy_refine,
-            ["<C-]>"] = require("telescope.actions").cycle_history_next,
-            ["<C-[>"] = require("telescope.actions").cycle_history_prev,
+            ["<C-p>"] = require("telescope.actions").cycle_history_prev,
+            ["<C-n>"] = require("telescope.actions").cycle_history_next,
+            ["<C-a>"] = function(_)
+              vim.api.nvim_input("<Esc>^i") -- Go to beginning
+            end,
+            ["<C-e>"] = function(_)
+              vim.api.nvim_input("<Esc>$a") -- Go to end
+            end,
+            ["<C-u>"] = function(_)
+              vim.api.nvim_input("<Esc>d^xi") -- Delete until beginning
+            end,
+          },
+          n = {
+            ["<C-c>"] = require("telescope.actions").close,
           },
         },
         history = {
           -- telescope-smart-history
-          path = '~/.local/share/nvim/databases/telescope_history.sqlite3',
+          path = "~/.local/share/nvim/databases/telescope_history.sqlite3",
           limit = 100,
-        }
+        },
       },
       pickers = {
         buffers = {
@@ -60,7 +76,7 @@ return {
           -- auto_quoting = false, -- if set to false == automatically quote the first word
           mappings = {
             i = {
-              ["<C-u>"] = lga_actions.quote_prompt(),
+              -- ["<C-u>"] = lga_actions.quote_prompt(),
               ["<C-i>"] = lga_actions.quote_prompt({ postfix = " --iglob " }),
             },
           },
