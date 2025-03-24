@@ -40,6 +40,8 @@ alias vimc="vim ~/.config/nvim/lua/settings.lua"
 alias hsc="vim ~/.hammerspoon/init.lua"
 alias vimcd="cd ~/.config/nvim/"
 alias localgitc="vim .git/info/exclude"
+alias lg="lazygit"
+
 
 alias chrome="/usr/bin/open -a '/Applications/Google Chrome.app'"
 
