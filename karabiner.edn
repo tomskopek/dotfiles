@@ -1,0 +1,20 @@
+{:profiles
+ {:goku {:default true
+         :alone   80
+         :held    50
+         :delay   0
+         :sim     30 }}
+ :simlayers {
+             :6-mode {:key :6}
+             }
+ :main [{:des "swap caps and esc"
+         :rules [
+                 [:##caps_lock :escape]
+                 [:escape :caps_lock]
+                 ]}
+        {:des "6key"
+         :rules [:6-mode
+                 [:n :!S0]
+                 ]}
+        ]
+ }
