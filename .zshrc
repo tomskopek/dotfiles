@@ -49,6 +49,11 @@ alias dev='cd ~/dev'
 alias tmp='cd ~/dev/tmp'
 alias dotfiles='cd ~/dev/dotfiles'
 
+# ---------- keyboard -----
+getid() {
+  osascript -e "id of app \"$1\""
+}
+
 # ---------- javascript stuff ---------
 alias pkj='vim package.json'
 alias ys='yarn start'
@@ -81,6 +86,9 @@ alias ybst='yarn backend-shared test --watch --testRegex '
 
 alias iosurl='f() { npx uri-scheme open $1 --ios };f'
 alias andurl='f() { npx uri-scheme open $1 --android };f'
+
+# --- django
+alias mpt='f() { ./manage.py test $1 };f'
 
 case "$OSTYPE" in
   darwin*)
