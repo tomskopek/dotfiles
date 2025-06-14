@@ -31,16 +31,16 @@ return {
         prompt_prefix = "",
         mappings = {
           i = {
-            ["<C-j>"] = require("telescope.actions").move_selection_next,
-            ["<C-k>"] = require("telescope.actions").move_selection_previous,
+            ["<C-n>"] = require("telescope.actions").move_selection_next,
+            ["<C-p>"] = require("telescope.actions").move_selection_previous,
             ["<C-s>"] = require("telescope.actions.layout").toggle_preview,
             ["<C-h>"] = require("telescope.actions").preview_scrolling_left,
             -- ["<C-j>"] = require("telescope.actions").preview_scrolling_down,
             -- ["<C-k>"] = require("telescope.actions").preview_scrolling_up,
             ["<C-l>"] = require("telescope.actions").preview_scrolling_right,
             ["<C-f>"] = require("telescope.actions").to_fuzzy_refine,
-            ["<C-p>"] = require("telescope.actions").cycle_history_prev,
-            ["<C-n>"] = require("telescope.actions").cycle_history_next,
+            ["<C-k>"] = require("telescope.actions").cycle_history_prev,
+            ["<C-j>"] = require("telescope.actions").cycle_history_next,
             ["<C-a>"] = function(_)
               vim.api.nvim_input("<Esc>^i") -- Go to beginning
             end,
@@ -76,7 +76,7 @@ return {
           -- auto_quoting = false, -- if set to false == automatically quote the first word
           mappings = {
             i = {
-              -- ["<C-u>"] = lga_actions.quote_prompt(),
+              ["<C-o>"] = lga_actions.quote_prompt(),
               ["<C-i>"] = lga_actions.quote_prompt({ postfix = " --iglob " }),
             },
           },
@@ -109,6 +109,6 @@ return {
 
     vim.keymap.set("n", "<leader>sv", function()
       builtin.live_grep({ cwd = vim.fn.stdpath("config") })
-    end, { desc = "[S]dit neo[V]im files" })
+    end, { desc = "[S]earch neo[V]im files" })
   end,
 }
