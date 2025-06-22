@@ -1,20 +1,102 @@
 {:profiles
- {:goku {:default true
-         :alone   80
-         :held    50
-         :delay   0
-         :sim     30 }}
+ {:goku {
+         :default true
+         :sim     50     ; simultaneous key press threshold (default: 50)
+         ; simlayer is implemented with to_if_alone and simultaneous key press feature
+         ; if keydown event for two different keys are pressed within :sim ms, the keypresses are considered simultaneous
+         ; this seems to be for [:a :b] kind of cases, and not for the :simlayers
+         :delay   350    ; to_delayed_action_delay_milliseconds (default: 500)
+         ; basically it means time after which the key press is count delayed
+         ; after :delay ms, the key press is considered to be delayed (used for double-press macros)
+         ; NOTE: this should be equal to :held for mod-tap layers
+         :held    350    ; to_if_held_down_threshold_milliseconds (default: 500)
+         ; key is fired twice when :held ms is elapsed (otherwise seen as a hold command) (NOTE: NO CLUE WHAT IS THIS)
+         ; NOTE: this should be equal to :delay for mod-tap layers
+         :alone   349    ; to_if_alone_timeout_milliseconds (default: 1000)
+         ; affects to_if_alone behavior
+         ; simlayer is implemented with to_if_alone and simultaneous key press feature
+         ; if keyup event comes within :alone ms from keydown, the key is not just pressed but held
+         ; NOTE: (I think) this must be just less than the delay / held value to avoid bug where mod-tap layer stays 1
+         }
+  }
+
+ :simlayer-threshold 50  ;simultaneous_threshold_milliseconds (default: 50) <- this seems to work for the :simlayers cases
+                         ;This modifies a variable inside the simlayer rule
  :simlayers {
              :6-mode {:key :6}
+             :r-mode {:key :r}
+             :o-mode {:key :o}
+             :period-mode {:key :period}
+             :caps-mode {:key :caps_lock}
+             :esc-mode {:key :escape}
              }
- :main [{:des "swap caps and esc"
+ :templates {:open-app "open -a \"%s\""},
+ :main [
+        {:des "No-op for cmd+p"
+         :rules [
+                 [:!Cp []]
+                 ]}
+        {:des "Capslock to Escape"
          :rules [
                  [:##caps_lock :escape]
-                 [:escape :caps_lock]
                  ]}
-        {:des "6key"
-         :rules [:6-mode
-                 [:n :!S0]
+        ; {:des "Caps lock to hyper on hold"
+        ;  :rules [
+        ;          [:##caps_lock :!QWEright_shift nil {:alone :escape}]
+        ;          ]}
+        {:des "Right Option to Hyper (command + control + option + shift)"
+         :rules [
+                 [:right_option :!QWEright_shift]
                  ]}
+        ; {:des "6key"
+        ;  :rules [:6-mode
+        ;          [:n :!S0]
+        ;          ]}
+        ; {:des "o-key"
+        ;  :rules [:o-mode
+        ;          [:n :!S0]
+        ;          ]}
+        ; {:des "caps mode", ; this doesnt work... why?
+        ;  :rules [:caps-mode
+        ;          [:f [:open-app "Finder"]]
+        ;          [:i [:open-app "Iterm2"]]
+        ;          ]}
+        {:des "escape mode", ; this doesnt work... why?
+         :rules [:esc-mode
+                 [:f [:open-app "Finder"]]
+                 [:i [:open-app "Iterm2"]]
+                 ]}
+        ; {:des "period mode",
+        ;  :rules [:period-mode
+        ;          [:f [:open-app "Finder"]]
+        ;          [:i [:open-app "Iterm2"]]
+        ;          ]}
+        ; {:des "r-mode for deleting characters with ui, words with jk and lines with hl"
+        ;  :rules [:r-mode
+        ;           [:##u :delete_or_backspace]   ; r b> j   Delete word backwards
+        ;           [:##i :delete_forward]        ; r -> j   Delete word backwards
+        ;           [:##j :!Odelete_or_backspace] ; r -> j   Delete word backwards
+        ;           [:##k :!Odelete_forward]      ; r -> k   Delete word forwards
+        ;           [:##h :!Cdelete_or_backspace] ; r -> h   Delete to beginning of line
+        ;           [:##l :!Cdelete_forward]      ; r -> l   Delete to end of line
+        ;         ]
+        ;  }
+
         ]
  }
+
+; !QWEright_shift  is hyper key
+;!  | means mandatory
+;#  | means optional
+;C  | left_command
+;T  | left_control
+;O  | left_option
+;S  | left_shift
+;F  | fn
+;Q  | right_command
+;W  | right_control
+;E  | right_option
+;R  | right_shift
+;P  | caps_lock (while in caps lock)
+;## | optional any
+;!! | command + control + option + shift (hyper) ---> EXAMPLE: [:!C1 :!!1] = CMD 1 will press hyper 1
