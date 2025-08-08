@@ -1,5 +1,6 @@
-require("settings")
-require("keymaps")
+require("config.settings")
+require("config.keymaps")
+require("config.lsp")
 require("functions.redir")
 
 -- Bootstrap lazy.nvim

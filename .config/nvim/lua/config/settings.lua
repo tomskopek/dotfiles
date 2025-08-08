@@ -12,7 +12,7 @@ vim.opt.virtualedit = "block" -- In Visual block mode, cursor can be positioned 
 vim.opt.signcolumn = "yes" -- Keep the sign column always open
 
 -- Visual indicators
-vim.opt.cursorline = false -- Show which line your cursor is on
+vim.opt.cursorline = true -- Show which line your cursor is on
 vim.opt.list = true -- Show listchars
 vim.opt.listchars = "trail:·" -- Trailing spaces are represented as ·
 
