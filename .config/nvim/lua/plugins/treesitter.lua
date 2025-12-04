@@ -9,9 +9,8 @@ return {
     build = ":TSUpdate",
     config = function()
       local configs = require("nvim-treesitter.configs")
-
+      ---@diagnostic disable-next-line: missing-fields
       configs.setup({
-
         ensure_installed = {
           "c", -- required for nvim-treesitter
           "lua", -- required for nvim-treesitter
@@ -89,17 +88,24 @@ return {
           },
           move = {
             enable = true,
+            set_jumps = true, -- With this, you can use ctrl+o to go back (like other jump movements, like gg/G for example)
             goto_next_start = {
               ["]f"] = "@function.outer",
+              ["]c"] = "@class.outer",
+              ["]t"] = "@tag.outer",
             },
             goto_next_end = {
               ["]F"] = "@function.outer",
+              ["]T"] = "@tag.outer",
             },
             goto_previous_start = {
               ["[f"] = "@function.outer",
+              ["[c"] = "@class.outer",
+              ["[t"] = "@tag.outer",
             },
             goto_previous_end = {
               ["[F"] = "@function.outer",
+              ["[T"] = "@tag.outer",
             },
           },
         },
