@@ -2,7 +2,7 @@
 vim.lsp.config('basedpyright', {
   settings = {
     basedpyright = {
-      typeCheckingMode = "basic", -- basic type checking (off/basic/strict)
+      typeCheckingMode = "off", -- basic type checking (off/basic/strict)
       analysis = {
         autoSearchPaths = true,
         useLibraryCodeForTypes = true,
