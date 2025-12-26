@@ -1,6 +1,8 @@
 return {
   {
     "stevearc/conform.nvim",
+    event = { "BufWritePre" }, -- Load conform right before I save the buffer (lazyloading)
+    cmd = { "ConformInfo" }, -- or Load conform if I run ConformInfo command
     opts = {
       formatters_by_ft = {
         lua = { "stylua" },
@@ -22,6 +24,11 @@ return {
         end,
         mode = "",
         desc = "Format buffer",
+      },
+      {
+        "<leader>cI",
+        "<cmd>ConformInfo<cr>",
+        desc = "Conform Info",
       },
     },
   },
