@@ -45,3 +45,6 @@ vim.opt.inccommand = "split" -- Show the effect of :%s in a split
 
 -- Disable for clumsy fingers
 vim.keymap.set("n", "q:", "<Nop>") -- Disable the command-line window
+
+-- Folds
+vim.opt.foldlevelstart = 99
