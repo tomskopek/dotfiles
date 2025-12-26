@@ -37,6 +37,10 @@ vim.keymap.set("n", "<leader>i", function()
   })
 end, { desc = "auto-[I]mport missing symbols", silent = true })
 
+-- LSP navigation
+
+vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "[G]o to [D]efinition" })
+
 -- show error under cursor
 vim.keymap.set("n", "<leader>er", function()
   vim.diagnostic.open_float(nil, { focusable = false, border = "rounded" })
@@ -97,3 +101,5 @@ vim.keymap.set("n", "<leader>tshi", function()
   local hl_info = vim.api.nvim_get_hl(0, { name = hl_group })
   print("Highlight attributes:", vim.inspect(hl_info))
 end)
+
+
