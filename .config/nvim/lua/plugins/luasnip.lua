@@ -46,8 +46,8 @@ return {
         "clo",
         fmt("console.log({logmsg});", {
           logmsg = c(1, {
-            { t("'"), i(1, "hello world"), t("'") },
             ls.sn(1, { t("{ "), i(1, "object"), t(" }") }),
+            { t("'"), i(1, "hello world"), t("'") },
             { t("'"), rep(1), t("', "), i(1, "var") },
             i(1, "basic"),
           }),
