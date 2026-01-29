@@ -17,6 +17,15 @@ return {
     { "<leader>sj", "<cmd>Telescope jumplist<cr>", desc = "[S]earch [J]umplist" },
     { "<leader>sk", "<cmd>Telescope keymaps<cr>", desc = "[S]earch [K]eymaps" },
     { "<leader>sc", "<cmd>Telescope command_history<cr>", desc = "[S]earch [C]ommand History" },
+    {
+      "<leader>sm",
+      function()
+        require("telescope.builtin").find_files({
+          find_command = { "find", ".", "-type", "f", "-mtime", "-7" },
+        })
+      end,
+      desc = "[S]earch [M]odified (last 7 days)",
+    },
   },
   config = function()
     local telescope = require("telescope")
@@ -77,7 +86,9 @@ return {
           mappings = {
             i = {
               ["<C-o>"] = lga_actions.quote_prompt(),
+              ["<C-h>"] = lga_actions.quote_prompt({ postfix = " --hidden" }),
               ["<C-i>"] = lga_actions.quote_prompt({ postfix = " --iglob " }),
+              ["<C-T>"] = lga_actions.quote_prompt({ postfix = " --iglob '!**/tests/**'" }),
             },
           },
         },
