@@ -48,3 +48,6 @@ vim.keymap.set("n", "q:", "<Nop>") -- Disable the command-line window
 
 -- Folds
 vim.opt.foldlevelstart = 99
+
+-- keep n/N consistent whether using #/*
+vim.keymap.set("n", "#", "*NN")
