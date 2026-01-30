@@ -15,21 +15,21 @@ return {
           end
 
           -- Navigation
-          map("n", "]c", function()
+          map("n", "]h", function()
             if vim.wo.diff then
               vim.cmd.normal({ "]c", bang = true })
             else
               gitsigns.nav_hunk("next")
             end
-          end, { desc = "]c next quickfix" })
+          end, { desc = "Next [H]unk" })
 
-          map("n", "[c", function()
+          map("n", "[h", function()
             if vim.wo.diff then
               vim.cmd.normal({ "[c", bang = true })
             else
               gitsigns.nav_hunk("prev")
             end
-          end, { desc = "[c previous quickfix" })
+          end, { desc = "Previous [H]unk" })
 
           map("n", "<leader>gd", gitsigns.preview_hunk, {
             desc = "[G]it [D]iff (preview hunk)",
