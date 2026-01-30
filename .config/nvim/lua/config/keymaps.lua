@@ -2,7 +2,7 @@
 -- :verbose map <leader>ev
 
 -- Buffers
-vim.keymap.set("n", "<leader>x", "<cmd>bd<CR>", { silent = true, desc = "[X] Close Current Buffer" })
+vim.keymap.set("n", "<leader>x", "<cmd>bd<CR>", { silent = true, desc = "[x] Close Current Buffer" })
 vim.keymap.set("n", "[b", "<cmd>bprev<CR>", { silent = true, desc = "([) Previous [B]uffer" })
 vim.keymap.set("n", "]b", "<cmd>bnext<CR>", { silent = true, desc = "(]) Next [B]uffer" })
 
@@ -48,9 +48,9 @@ end, { desc = "Show diagnostics/[E][R]rors in a floating window" })
 
 -- Quickfix
 -- --------
-vim.keymap.set("n", "]q", "<cmd>cnext<CR>", { desc = "quickfix next" })
-vim.keymap.set("n", "[q", "<cmd>cprev<CR>", { desc = "quickfix prev" })
-vim.keymap.set("n", "<leader>cc", function()
+vim.keymap.set("n", "]q", "<cmd>cnext<CR>", { desc = "[Q]uickfix next" })
+vim.keymap.set("n", "[q", "<cmd>cprev<CR>", { desc = "[Q]uickfix prev" })
+vim.keymap.set("n", "<C-q>", function()
   local qf_exists = false
   for _, win in ipairs(vim.fn.getwininfo()) do
     if win.quickfix == 1 then
@@ -65,7 +65,7 @@ vim.keymap.set("n", "<leader>cc", function()
   end
 
   vim.notify(string.format("quickfix exists? [%s]", qf_exists))
-end, { desc = "toggle quickfix window" })
+end, { desc = "Toggle [Q]uickfix window" })
 
 -- some tools for debugging syntax highlighting, maybe delete later
 vim.keymap.set("n", "<leader>hi", function()
