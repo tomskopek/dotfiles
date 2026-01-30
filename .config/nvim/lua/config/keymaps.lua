@@ -43,7 +43,7 @@ vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "[G]o to [D]efinition
 
 -- show error under cursor
 vim.keymap.set("n", "<leader>er", function()
-  vim.diagnostic.open_float(nil, { focusable = false, border = "rounded" })
+  vim.diagnostic.open_float(nil, { focusable = true, border = "rounded" })
 end, { desc = "Show diagnostics/[E][R]rors in a floating window" })
 
 -- Quickfix
