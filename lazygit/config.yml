@@ -8,3 +8,8 @@
 # - 'skip': open most recent repo
 # - 'quit': exit Lazygit
 notARepository: skip
+ 
+git:
+    paging:
+        colorArg: always
+        pager: delta --dark --paging=never --syntax-theme Dracula
