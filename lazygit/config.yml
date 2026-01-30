@@ -1,5 +1,6 @@
 # rm ~/Library/Application\ Support/lazygit/config.yml
-# ln -s ~/dev/dotfiles/lazygit/config.yml ~/Library/Application\ Support/lazygit/config.yml
+# Mac: ln -s ~/dev/dotfiles/lazygit/config.yml ~/Library/Application\ Support/lazygit/config.yml
+# Linux: ln -s ~/dev/dotfiles/lazygit/config.yml ~/.config/lazygit/config.yml
 
 # What to do when opening Lazygit outside of a git repo.
 # - 'prompt': (default) ask whether to initialize a new repo or open in the most recent repo
