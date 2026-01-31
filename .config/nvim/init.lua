@@ -2,6 +2,7 @@ require("config.settings")
 require("config.keymaps")
 require("config.lsp")
 require("functions.redir")
+require("functions.autoimport")
 
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
