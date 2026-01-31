@@ -15,6 +15,7 @@ return {
         "lua_ls",
         "basedpyright",
         "ruff",
+        "spectral",
       },
       automatic_installation = true,
     },
