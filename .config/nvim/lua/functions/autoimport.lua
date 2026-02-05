@@ -1,3 +1,4 @@
+-- NOTE: THIS FILE WAS VIBE CODED
 -- Auto-import: uses LSP completions to find and add imports for symbol under cursor
 
 -- Simple floating picker using native nvim API
@@ -107,7 +108,100 @@ local function auto_import()
     end
 
     if #import_items == 0 then
-      vim.notify("No import found for " .. word)
+      -- Fallback: try code actions (for TypeScript and other LSPs)
+      local function is_import_action(action)
+        if action.kind == "quickfix" and action.command and action.command.arguments then
+          local args = action.command.arguments[1]
+          if args then
+            if args.fixName == "import" then return true end
+            if args.action and args.action.fixName == "import" then return true end
+          end
+        end
+        if action.title and action.title:lower():find("import") then
+          return true
+        end
+        return false
+      end
+
+      -- Convert vim.diagnostic format to LSP diagnostic format
+      local function to_lsp_diagnostic(d)
+        return {
+          range = {
+            start = { line = d.lnum, character = d.col },
+            ["end"] = { line = d.end_lnum or d.lnum, character = d.end_col or d.col },
+          },
+          message = d.message,
+          severity = d.severity,
+          source = d.source,
+          code = d.code,
+        }
+      end
+
+      local lsp_diagnostics = {}
+      for _, d in ipairs(vim.diagnostic.get(bufnr, { lnum = cursor[1] - 1 })) do
+        table.insert(lsp_diagnostics, to_lsp_diagnostic(d))
+      end
+
+      local ca_params = vim.lsp.util.make_range_params(0, "utf-8")
+      ca_params.context = { diagnostics = lsp_diagnostics }
+
+      vim.lsp.buf_request_all(bufnr, "textDocument/codeAction", ca_params, function(results)
+        local actions = {}
+        local seen_titles = {}
+        for client_id, result in pairs(results) do
+          if result.result then
+            for _, action in ipairs(result.result) do
+              if is_import_action(action) and not seen_titles[action.title] then
+                seen_titles[action.title] = true
+                action._client_id = client_id
+                table.insert(actions, action)
+              end
+            end
+          end
+        end
+
+        if #actions == 0 then
+          vim.notify("No import found for " .. word)
+          return
+        end
+
+        local function apply_action(action)
+          local client = vim.lsp.get_client_by_id(action._client_id)
+          if not client then return end
+
+          -- Resolve the action if needed (some servers require this)
+          local function do_apply(resolved)
+            if resolved.edit then
+              vim.lsp.util.apply_workspace_edit(resolved.edit, client.offset_encoding)
+            end
+            if resolved.command then
+              client.request("workspace/executeCommand", resolved.command, nil, bufnr)
+            end
+          end
+
+          -- Check if action needs resolving
+          if not action.edit and not action.command and action.data then
+            client.request("codeAction/resolve", action, function(err, resolved)
+              if resolved then do_apply(resolved) end
+            end, bufnr)
+          else
+            do_apply(action)
+          end
+        end
+
+        if #actions == 1 then
+          apply_action(actions[1])
+        else
+          floating_select(actions, {
+            prompt = "Import " .. word,
+            format_item = function(action)
+              return action.title or "Import"
+            end,
+          }, function(action)
+            if action then apply_action(action) end
+          end)
+        end
+      end)
       return
     end
 
