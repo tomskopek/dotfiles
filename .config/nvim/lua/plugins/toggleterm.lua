@@ -1,5 +1,3 @@
-local get_root_folder = require("helpers.get-root-folder")
-
 return {
   {
     "akinsho/toggleterm.nvim",
@@ -14,10 +12,10 @@ return {
       local Terminal = require("toggleterm.terminal").Terminal
 
       function _LAZYGIT_TOGGLE()
-        local root = get_root_folder()
+        local git_root = vim.fs.find(".git", { path = vim.fn.expand("%:p:h"), upward = true })[1]
         local lazygit_cmd = "lazygit"
-        if root then
-          lazygit_cmd = string.format("lazygit --path=%s", vim.fn.fnameescape(root))
+        if git_root then
+          lazygit_cmd = string.format("lazygit --path=%s", vim.fn.fnameescape(vim.fs.dirname(git_root)))
         end
         local lazygit =
           Terminal:new({ cmd = lazygit_cmd, display_name = "lazygit", hidden = true, direction = "float" })
