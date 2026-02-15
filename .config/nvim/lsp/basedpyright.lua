@@ -6,6 +6,9 @@ return {
       analysis = {
         autoSearchPaths = true,
         useLibraryCodeForTypes = true,
+        diagnosticSeverityOverrides = {
+          reportMissingImports = "error", -- Flag imports of packages that cannot be resolved
+        },
       },
     },
   },
