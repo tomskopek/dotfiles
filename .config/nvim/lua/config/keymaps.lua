@@ -41,6 +41,36 @@ end, { desc = "auto-[I]mport missing symbols", silent = true })
 
 vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "[G]o to [D]efinition" })
 
+-- Find references, excluding import lines
+vim.keymap.set("n", "gri", function()
+  vim.lsp.buf.references(nil, {
+    on_list = function(options)
+      local import_patterns = { "^import ", "^from ", "^require", "^const .+ = require" }
+      local filtered = {}
+      for _, item in ipairs(options.items) do
+        local text = item.text or ""
+        local is_import = false
+        for _, pattern in ipairs(import_patterns) do
+          if text:match(pattern) then
+            is_import = true
+            break
+          end
+        end
+        if not is_import then
+          table.insert(filtered, item)
+        end
+      end
+      options.items = filtered
+      vim.fn.setqflist({}, " ", options)
+      if #filtered == 1 then
+        vim.cmd("cfirst")
+      else
+        vim.cmd("copen")
+      end
+    end,
+  })
+end, { desc = "Find [R]eferences (excluding imports)" })
+
 -- show error under cursor
 vim.keymap.set("n", "<leader>er", function()
   vim.diagnostic.open_float(nil, { focusable = true, border = "rounded" })

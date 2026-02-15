@@ -45,8 +45,6 @@ vim.cmd.colorscheme("kanagawa")
 -- Nice to haves:
 -- -------------
 -- - Open visually selected lines of code in github.com
--- - I feel like indentation is not great? Need to study this some more and understand what actually needs to be improved
--- - there's a bit of lag when lsp servers starting up?
 -- - Update dotfiles readme for setting up a new laptop
 -- - Multiple cursors
 -- - Telescope nav search_history
@@ -60,8 +58,6 @@ vim.cmd.colorscheme("kanagawa")
 --            terminal open inside of nvim, this gets you into this mode. To exit this mode, press "i" (insert mode)
 -- - When I open a folder in telescope, the project directory changes (:pwd shows the folder that I opened). This means I cannot
 --     change find files using telescope anymore. I have to quit and reopen vim.
--- - When doing "get references for word under cursor", I dont really care about imports...
--- - auto-indent not working well in some python files. Eg: panel_task -> try adding a new line and then == to autoalign it
 -- - sometimes I get into a funky state when quickfix or filetree is open, and I want to close current buffer. It's like the quickfix or filetree
 --     "take over" the screen
 -- - exiting telescope sucks. If I enter and type nothing, I'm in insert mode. I'd like to press esc to leave. I have to press ctrl+c or esc twice. 
