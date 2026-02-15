@@ -63,8 +63,6 @@ vim.keymap.set("n", "<C-q>", function()
   else
     vim.cmd("copen")
   end
-
-  vim.notify(string.format("quickfix exists? [%s]", qf_exists))
 end, { desc = "Toggle [Q]uickfix window" })
 
 -- some tools for debugging syntax highlighting, maybe delete later
