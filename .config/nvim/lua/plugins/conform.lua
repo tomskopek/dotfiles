@@ -6,7 +6,7 @@ return {
     opts = {
       formatters_by_ft = {
         lua = { "stylua" },
-        python = { "autopep8", "ruff_format" }, -- Conform will run multiple formatters sequentially
+        python = { "ruff_organize_imports", "ruff_format" }, -- Conform will run multiple formatters sequentially
         javascript = { "prettierd", "prettier", stop_after_first = true }, -- Conform will run the first available formatter
         typescript = { "prettierd", "prettier", stop_after_first = true },
         javascriptreact = { "prettierd", "prettier", stop_after_first = true },
