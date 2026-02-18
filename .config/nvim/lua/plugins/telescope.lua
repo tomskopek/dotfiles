@@ -95,7 +95,13 @@ return {
       },
     })
 
-    telescope.load_extension("fzf")
+    -- Ensure the directory exists for telescope-smart-history's sqlite database (no-op if already exists)
+    vim.fn.mkdir(vim.fn.expand("~/.local/share/nvim/databases"), "p")
+
+    local ok, err = pcall(telescope.load_extension, "fzf")
+    if not ok then
+      vim.notify("telescope-fzf-native not built yet - if this is your first time opening nvim, it is probably still building. Otherwise run :Lazy build telescope-fzf-native.nvim", vim.log.levels.WARN)
+    end
     telescope.load_extension("live_grep_args")
     telescope.load_extension("smart_history")
 
