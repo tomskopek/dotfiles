@@ -8,8 +8,9 @@ return {
         show_hidden = true
       },
     },
+    enabled = false,
     keys = {
-      { "<c-f>", "<cmd>Oil<cr>", desc = "Toggle Oil" },
+      -- { "<c-f>", "<cmd>Oil<cr>", desc = "Toggle Oil" },
     },
     -- Optional dependencies
     -- dependencies = { { "nvim-mini/mini.icons", opts = {} } }, -- use if you prefer mini icons
