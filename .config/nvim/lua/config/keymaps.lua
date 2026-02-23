@@ -18,6 +18,10 @@ vim.keymap.set("n", "<leader>yf", function()
   vim.fn.setreg("+", vim.fn.expand("%:p"))
 end, { silent = true, desc = "[Y]ank full [F]ile path to clipboard" })
 
+vim.keymap.set("n", "<leader>yrf", function()
+  vim.fn.setreg("+", vim.fn.expand("%:p:."))
+end, { silent = true, desc = "[Y]ank [R]elative [F]ile path to clipboard" })
+
 vim.keymap.set("n", "<leader>ydf", function()
   vim.fn.setreg("+", vim.fn.expand("%:r"):gsub("/", "."))
 end, { silent = true, desc = "[Y]ank [D]otted relative [F]ile path to clipboard" })
