@@ -51,3 +51,6 @@ vim.opt.foldlevelstart = 99
 
 -- keep n/N consistent whether using #/*
 vim.keymap.set("n", "#", "*NN")
+
+-- no swap files
+vim.opt.swapfile = false
