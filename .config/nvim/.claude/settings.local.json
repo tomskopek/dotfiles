@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(tmux send-keys:*)",
-      "Bash(tmux capture-pane:*)"
+      "Bash(tmux capture-pane:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }
