@@ -107,6 +107,7 @@ end)
 
 -- notes.md (useful for jotting down notes!)
 vim.keymap.set("n", "<leader>on", ":e ~/notes.md<CR>")
+vim.keymap.set("n", "<leader>os", ":e ~/scratch.md<CR>")
 
 -- No-ops
 vim.keymap.set("v", "K", "<Nop>", { silent = true }) -- not unusual to misclick this (ctrl+v to select line, k to move up). capital K brings up documentation and this fails with visual line selected
