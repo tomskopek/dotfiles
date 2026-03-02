@@ -17,6 +17,7 @@ return {
     { "<leader>sj", "<cmd>Telescope jumplist<cr>", desc = "[S]earch [J]umplist" },
     { "<leader>sk", "<cmd>Telescope keymaps<cr>", desc = "[S]earch [K]eymaps" },
     { "<leader>sc", "<cmd>Telescope command_history<cr>", desc = "[S]earch [C]ommand History" },
+    { "<leader>st", "<cmd>Telescope treesitter<cr>", desc = "[S]earch [T]reesitter" },
     {
       "<leader>sm",
       function()
