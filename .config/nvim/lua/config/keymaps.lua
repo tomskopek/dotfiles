@@ -44,6 +44,7 @@ end, { desc = "auto-[I]mport missing symbols", silent = true })
 -- LSP navigation
 
 vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "[G]o to [D]efinition" })
+vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, { desc = '[G]o to [I]mplementation' })
 
 -- show error under cursor
 vim.keymap.set("n", "<leader>er", function()
