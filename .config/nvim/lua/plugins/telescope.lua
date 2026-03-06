@@ -12,7 +12,16 @@ return {
   },
   keys = {
     { "<C-p>", "<cmd>Telescope find_files<cr>", desc = "[S]earch [F]iles" },
-    { "<C-b>", "<cmd>Telescope buffers<cr>", desc = "[S]earch [B]uffers" },
+    {
+      "<C-b>",
+      function()
+        if vim.wo.winfixbuf then
+          vim.cmd("wincmd p") -- jump to previous window
+        end
+        require("telescope.builtin").buffers()
+      end,
+      desc = "[S]earch [B]uffers",
+    },
     { "<leader>sh", "<cmd>Telescope help_tags<cr>", desc = "[S]earch [H]elp" },
     { "<leader>sj", "<cmd>Telescope jumplist<cr>", desc = "[S]earch [J]umplist" },
     { "<leader>sk", "<cmd>Telescope keymaps<cr>", desc = "[S]earch [K]eymaps" },

@@ -54,3 +54,14 @@ vim.keymap.set("n", "#", "*NN")
 
 -- no swap files
 vim.opt.swapfile = false
+
+-- Quickfix window behavior:
+--   buflisted=false: hide from buffer lists (Telescope, bufferline, :bnext)
+--   winfixbuf=true:  lock window to its buffer so other buffers can't open in it
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "qf",
+  callback = function()
+    vim.bo.buflisted = false
+    vim.wo.winfixbuf = true
+  end,
+})

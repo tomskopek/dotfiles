@@ -55,20 +55,15 @@ end, { desc = "Show diagnostics/[E][R]rors in a floating window" })
 -- --------
 vim.keymap.set("n", "]q", "<cmd>cnext<CR>", { desc = "[Q]uickfix next" })
 vim.keymap.set("n", "[q", "<cmd>cprev<CR>", { desc = "[Q]uickfix prev" })
+local function qf_is_open()
+  return vim.fn.getqflist({ winid = 0 }).winid ~= 0
+end
 vim.keymap.set("n", "<C-q>", function()
-  local qf_exists = false
-  for _, win in ipairs(vim.fn.getwininfo()) do
-    if win.quickfix == 1 then
-      qf_exists = true
-      break
-    end
-  end
-  if qf_exists then
-    vim.cmd("cclose")
-  else
-    vim.cmd("copen")
-  end
+  vim.cmd(qf_is_open() and "cclose" or "copen")
 end, { desc = "Toggle [Q]uickfix window" })
+vim.keymap.set("n", "<C-c>", function()
+  if qf_is_open() then vim.cmd("cclose") end
+end, { desc = "[C]lose quickfix window" })
 
 -- some tools for debugging syntax highlighting, maybe delete later
 vim.keymap.set("n", "<leader>hi", function()
