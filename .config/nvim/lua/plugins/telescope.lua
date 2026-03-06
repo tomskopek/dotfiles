@@ -36,6 +36,11 @@ return {
       end,
       desc = "[S]earch [M]odified (last 7 days)",
     },
+    {
+      "<leader>sd",
+      "<cmd>Telescope git_status<cr>",
+      desc = "[S]earch [D]irty (git changed files)",
+    },
   },
   config = function()
     local telescope = require("telescope")
