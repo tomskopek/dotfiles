@@ -1,3 +1,4 @@
+ln -s ~/dev/dotfiles/.config/nvim ~/.config/nvim
 ln -s ~/dev/dotfiles/.hammerspoon ~/.hammerspoon
 ln -s ~/dev/dotfiles/karabiner.edn ~/.config/karabiner.edn
 
