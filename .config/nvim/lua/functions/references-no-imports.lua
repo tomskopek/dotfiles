@@ -1,30 +1,68 @@
--- Find references, excluding import lines
-local import_patterns_by_ft = {
+-- Find references, excluding import/export lines
+local js_patterns = {
+  "^import ", "^const .+ = require", "^let .+ = require", "^var .+ = require",
+  "^export ", "^module%.exports",
+}
+local skip_patterns_by_ft = {
   python = { "^import ", "^from %S+ import " },
-  javascript = { "^import ", "^const .+ = require", "^let .+ = require", "^var .+ = require" },
-  typescript = { "^import ", "^const .+ = require", "^let .+ = require", "^var .+ = require" },
-  javascriptreact = { "^import ", "^const .+ = require", "^let .+ = require", "^var .+ = require" },
-  typescriptreact = { "^import ", "^const .+ = require", "^let .+ = require", "^var .+ = require" },
+  javascript = js_patterns,
+  typescript = js_patterns,
+  javascriptreact = js_patterns,
+  typescriptreact = js_patterns,
 }
 
-vim.keymap.set("n", "gri", function()
+-- Definition patterns that use the search word (populated dynamically)
+local function get_definition_patterns(word, ft)
+  local js_defs = {
+    "^const " .. word .. "[%s=:%(]",
+    "^let " .. word .. "[%s=:%(]",
+    "^var " .. word .. "[%s=:%(]",
+    "^function " .. word .. "[%s%(]",
+    "^class " .. word .. "[%s{%(]",
+  }
+  local py_defs = {
+    "^def " .. word .. "[%s%(]",
+    "^class " .. word .. "[%s%(:]",
+    "^" .. word .. "%s*=",
+  }
+  local defs_by_ft = {
+    python = py_defs,
+    javascript = js_defs,
+    typescript = js_defs,
+    javascriptreact = js_defs,
+    typescriptreact = js_defs,
+  }
+  return defs_by_ft[ft] or {}
+end
+
+vim.keymap.set("n", "gu", function()
   local ft = vim.bo.filetype
-  local patterns = import_patterns_by_ft[ft]
+  local word = vim.fn.expand("<cword>")
+  local patterns = skip_patterns_by_ft[ft]
+  local def_patterns = get_definition_patterns(word, ft)
   vim.lsp.buf.references(nil, {
     on_list = function(options)
       local filtered = {}
       for _, item in ipairs(options.items) do
         local text = vim.trim(item.text or "")
-        local is_import = false
+        local should_skip = false
         if patterns then
           for _, pattern in ipairs(patterns) do
             if text:match(pattern) then
-              is_import = true
+              should_skip = true
               break
             end
           end
         end
-        if not is_import then
+        if not should_skip then
+          for _, pattern in ipairs(def_patterns) do
+            if text:match(pattern) then
+              should_skip = true
+              break
+            end
+          end
+        end
+        if not should_skip then
           table.insert(filtered, item)
         end
       end
@@ -37,4 +75,4 @@ vim.keymap.set("n", "gri", function()
       end
     end,
   })
-end, { desc = "Find [R]eferences (excluding imports)" })
+end, { desc = "Find [U]sages" })
