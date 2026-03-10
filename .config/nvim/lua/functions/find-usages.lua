@@ -69,7 +69,7 @@ vim.keymap.set("n", "gu", function()
       options.items = filtered
       vim.fn.setqflist({}, " ", options)
       if #filtered == 1 then
-        vim.cmd("cfirst")
+        vim.cmd("silent cfirst")
       else
         vim.cmd("copen")
       end
