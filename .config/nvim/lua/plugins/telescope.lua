@@ -41,6 +41,20 @@ return {
       "<cmd>Telescope git_status<cr>",
       desc = "[S]earch [D]irty (git changed files)",
     },
+    {
+      "<leader>sD",
+      function()
+        require("telescope.pickers")
+          .new({}, {
+            prompt_title = "Diff vs HEAD",
+            finder = require("telescope.finders").new_oneshot_job({ "git", "diff", "--name-only", "main" }),
+            sorter = require("telescope.config").values.generic_sorter({}),
+            previewer = require("telescope.config").values.file_previewer({}),
+          })
+          :find()
+      end,
+      desc = "[S]earch [D]iff vs main (all changed files)",
+    },
   },
   config = function()
     local telescope = require("telescope")
