@@ -17,11 +17,6 @@ return {
         view = {
           width = 50,
         },
-        on_attach = function(bufnr)
-          local api = require("nvim-tree.api")
-          api.config.mappings.default_on_attach(bufnr)
-          vim.keymap.set("n", "<C-c>", api.tree.close, { buffer = bufnr, desc = "Close nvim-tree" })
-        end,
       })
 
       -- Auto-close NvimTree when it's the last window.
