@@ -2,7 +2,21 @@
 -- :verbose map <leader>ev
 
 -- Buffers
-vim.keymap.set("n", "<leader>x", "<cmd>bd<CR>", { silent = true, desc = "[x] Close Current Buffer" })
+vim.keymap.set("n", "<leader>x", function()
+  local buf = vim.api.nvim_get_current_buf()
+  -- Switch to previous buffer first so nvim-tree doesn't fill the window
+  if vim.fn.buflisted(vim.fn.bufnr("#")) == 1 then
+    vim.cmd("b#")
+  else
+    vim.cmd("bprev")
+  end
+  -- If we're still on the same buffer (no other listed buffer), just delete
+  if vim.api.nvim_get_current_buf() == buf then
+    vim.cmd("bd")
+  else
+    vim.cmd("bd " .. buf)
+  end
+end, { silent = true, desc = "[x] Close Current Buffer" })
 vim.keymap.set("n", "[b", "<cmd>bprev<CR>", { silent = true, desc = "([) Previous [B]uffer" })
 vim.keymap.set("n", "]b", "<cmd>bnext<CR>", { silent = true, desc = "(]) Next [B]uffer" })
 
