@@ -31,10 +31,6 @@ return {
             end
           end, { desc = "Previous [H]unk" })
 
-          map("n", "<leader>gd", gitsigns.preview_hunk, {
-            desc = "[G]it [D]iff (preview hunk)",
-          })
-
           map("n", "<leader>gb", gitsigns.blame, {
             desc = "[G]it [B]lame",
           })
