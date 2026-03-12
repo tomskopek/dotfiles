@@ -76,8 +76,17 @@ vim.keymap.set("n", "<C-q>", function()
   vim.cmd(qf_is_open() and "cclose" or "copen")
 end, { desc = "Toggle [Q]uickfix window" })
 vim.keymap.set("n", "<C-c>", function()
-  if qf_is_open() then vim.cmd("cclose") end
-end, { desc = "[C]lose quickfix window" })
+  -- Close side windows one at a time: quickfix first, then nvim-tree
+  if qf_is_open() then
+    vim.cmd("cclose")
+    return
+  end
+  local ok, api = pcall(require, "nvim-tree.api")
+  if ok and api.tree.is_visible() then
+    api.tree.close()
+    return
+  end
+end, { desc = "[C]lose side windows (quickfix, nvim-tree)" })
 
 -- some tools for debugging syntax highlighting, maybe delete later
 vim.keymap.set("n", "<leader>hi", function()
