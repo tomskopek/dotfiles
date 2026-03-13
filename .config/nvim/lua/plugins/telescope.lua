@@ -91,6 +91,8 @@ return {
           },
           n = {
             ["<C-c>"] = require("telescope.actions").close,
+            ["<C-n>"] = require("telescope.actions").move_selection_next,
+            ["<C-p>"] = require("telescope.actions").move_selection_previous,
           },
         },
         history = {
