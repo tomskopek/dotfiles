@@ -3,6 +3,10 @@ local js_patterns = {
   "^import ", "^const .+ = require", "^let .+ = require", "^var .+ = require",
   "^export ", "^module%.exports",
 }
+local skip_filenames_by_ft = {
+  python = { "/test_[^/]*%.py$" },
+}
+
 local skip_patterns_by_ft = {
   python = { "^import ", "^from %S+ import " },
   javascript = js_patterns,
@@ -39,6 +43,7 @@ vim.keymap.set("n", "gu", function()
   local ft = vim.bo.filetype
   local word = vim.fn.expand("<cword>")
   local patterns = skip_patterns_by_ft[ft]
+  local filename_patterns = skip_filenames_by_ft[ft]
   local def_patterns = get_definition_patterns(word, ft)
   vim.lsp.buf.references(nil, {
     on_list = function(options)
@@ -46,7 +51,15 @@ vim.keymap.set("n", "gu", function()
       for _, item in ipairs(options.items) do
         local text = vim.trim(item.text or "")
         local should_skip = false
-        if patterns then
+        if filename_patterns and item.filename then
+          for _, pattern in ipairs(filename_patterns) do
+            if item.filename:match(pattern) then
+              should_skip = true
+              break
+            end
+          end
+        end
+        if not should_skip and patterns then
           for _, pattern in ipairs(patterns) do
             if text:match(pattern) then
               should_skip = true
