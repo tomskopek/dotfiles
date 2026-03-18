@@ -76,7 +76,11 @@ vim.keymap.set("n", "<C-q>", function()
   vim.cmd(qf_is_open() and "cclose" or "copen")
 end, { desc = "Toggle [Q]uickfix window" })
 vim.keymap.set("n", "<C-c>", function()
-  -- Close side windows one at a time: quickfix first, then nvim-tree
+  -- Close side windows one at a time: fugitive diff first, then quickfix, then nvim-tree
+  if vim.wo.diff then
+    require("functions.close-fugitive-diff")()
+    return
+  end
   if qf_is_open() then
     vim.cmd("cclose")
     return
@@ -86,7 +90,7 @@ vim.keymap.set("n", "<C-c>", function()
     api.tree.close()
     return
   end
-end, { desc = "[C]lose side windows (quickfix, nvim-tree)" })
+end, { desc = "[C]lose side windows (fugitive diff, quickfix, nvim-tree)" })
 
 -- some tools for debugging syntax highlighting, maybe delete later
 vim.keymap.set("n", "<leader>hi", function()
