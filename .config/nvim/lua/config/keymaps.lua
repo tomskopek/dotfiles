@@ -76,7 +76,10 @@ vim.keymap.set("n", "<C-q>", function()
   vim.cmd(qf_is_open() and "cclose" or "copen")
 end, { desc = "Toggle [Q]uickfix window" })
 vim.keymap.set("n", "<C-c>", function()
-  -- Close side windows one at a time: fugitive diff first, then quickfix, then nvim-tree
+  -- Close side windows one at a time: git blame, fugitive diff, quickfix, nvim-tree
+  if require("functions.close-git-blame")() then
+    return
+  end
   if vim.wo.diff then
     require("functions.close-fugitive-diff")()
     return
