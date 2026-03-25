@@ -51,6 +51,8 @@ return {
       { "<leader>dt", function() require("dap").terminate() end, desc = "Terminate" },
       { "<leader>de", function() require("dap.ui.widgets").hover() end, desc = "Eval Under Cursor" },
       { "<leader>du", function() require("dapui").toggle() end, desc = "Toggle DAP UI" },
+      { "<leader>dw", function() require("dapui").elements.watches.add(vim.fn.expand("<cword>")) end, desc = "Watch Word Under Cursor" },
+      { "<leader>dg", function() require("dap").run_to_cursor() end, desc = "Run to Cursor" },
     },
   },
   {
@@ -58,7 +60,28 @@ return {
     dependencies = { "mfussenegger/nvim-dap", "nvim-neotest/nvim-nio" },
     config = function()
       local dapui = require("dapui")
-      dapui.setup()
+      dapui.setup({
+        layouts = {
+          {
+            elements = {
+              { id = "scopes", size = 0.4 },
+              { id = "breakpoints", size = 0.2 },
+              { id = "stacks", size = 0.25 },
+              { id = "watches", size = 0.15 },
+            },
+            size = 50,
+            position = "left",
+          },
+          {
+            elements = {
+              { id = "repl", size = 0.5 },
+              { id = "console", size = 0.5 },
+            },
+            size = 10,
+            position = "bottom",
+          },
+        },
+      })
 
       -- Auto open/close UI when debug session starts/ends
       local dap = require("dap")
@@ -71,6 +94,23 @@ return {
       dap.listeners.before.event_exited["dapui_config"] = function()
         dapui.close()
       end
+
+      -- Quit all dap-related buffers when closing the main code window
+      vim.api.nvim_create_autocmd("QuitPre", {
+        callback = function()
+          local dap_patterns = { "dap-", "%[dap" }
+          for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+            local name = vim.api.nvim_buf_get_name(buf)
+            local ft = vim.bo[buf].filetype
+            for _, pat in ipairs(dap_patterns) do
+              if name:find(pat) or ft:find("dap") then
+                pcall(vim.api.nvim_buf_delete, buf, { force = true })
+                break
+              end
+            end
+          end
+        end,
+      })
     end,
   },
   {
@@ -102,6 +142,31 @@ return {
           {
             localRoot = vim.fn.getcwd() .. "/service_packages",
             remoteRoot = "/mobius/sampling-coordinator/src/service_packages",
+          },
+        },
+      })
+
+      -- Attach to API running with DEBUG=1 (debugpy on port 5768)
+      table.insert(dap.configurations.python, {
+        type = "python",
+        request = "attach",
+        name = "Attach: API (port 5768)",
+        connect = {
+          host = "127.0.0.1",
+          port = 5768,
+        },
+        pathMappings = {
+          {
+            localRoot = vim.fn.getcwd() .. "/service_packages",
+            remoteRoot = "/mobius/api/src/service_packages",
+          },
+          {
+            localRoot = vim.fn.getcwd() .. "/common",
+            remoteRoot = "/mobius/api/src/common",
+          },
+          {
+            localRoot = vim.fn.getcwd() .. "/api",
+            remoteRoot = "/mobius/api",
           },
         },
       })
