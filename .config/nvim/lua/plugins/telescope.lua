@@ -38,18 +38,26 @@ return {
     },
     {
       "<leader>sd",
-      "<cmd>Telescope git_status<cr>",
+      function()
+        require("telescope.builtin").git_status({ preview = { hide_on_startup = false } })
+      end,
       desc = "[S]earch [D]irty (git changed files)",
     },
     {
       "<leader>sD",
       function()
+        local previewers = require("telescope.previewers")
         require("telescope.pickers")
           .new({}, {
-            prompt_title = "Diff vs HEAD",
+            prompt_title = "Diff vs main",
+            preview = { hide_on_startup = false },
             finder = require("telescope.finders").new_oneshot_job({ "git", "diff", "--name-only", "main" }),
             sorter = require("telescope.config").values.generic_sorter({}),
-            previewer = require("telescope.config").values.file_previewer({}),
+            previewer = previewers.new_termopen_previewer({
+              get_command = function(entry)
+                return { "git", "diff", "main", "--", entry.value }
+              end,
+            }),
           })
           :find()
       end,
