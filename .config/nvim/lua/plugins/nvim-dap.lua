@@ -9,7 +9,7 @@ return {
         { "s", function() require("dap").step_over() end, "Step Over" },
         { "S", function() require("dap").step_into() end, "Step Into" },
         { "B", function() require("dap").step_out() end, "Step Out (Back)" },
-        { "r", function() require("dap").continue() end, "Resume" },
+        -- { "r", function() require("dap").continue() end, "Resume" },
         { "K", function() require("dap.ui.widgets").hover() end, "Eval" },
       }
       local saved_keymaps = {}
