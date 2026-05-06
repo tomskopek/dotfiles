@@ -1,7 +1,7 @@
 return {
   {
     "tpope/vim-rhubarb",
-    opts = {},
+    dependencies = { "tpope/vim-fugitive" },
 
     keys = {
       { "<leader>go", "<cmd>GBrowse<CR>", mode = "n", desc = "[G]ithub [O]pen file/selection on github.com" },
