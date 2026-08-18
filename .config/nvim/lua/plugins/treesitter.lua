@@ -91,7 +91,7 @@ return {
             set_jumps = true, -- With this, you can use ctrl+o to go back (like other jump movements, like gg/G for example)
             goto_next_start = {
               ["]f"] = "@function.outer",
-              ["]c"] = "@class.outer",
+              ["]k"] = "@class.outer", -- k instead of c: [c is the treesitter-context jump
               ["]t"] = "@tag.outer",
             },
             goto_next_end = {
@@ -100,7 +100,7 @@ return {
             },
             goto_previous_start = {
               ["[f"] = "@function.outer",
-              ["[c"] = "@class.outer",
+              ["[k"] = "@class.outer", -- k instead of c: [c is the treesitter-context jump
               ["[t"] = "@tag.outer",
             },
             goto_previous_end = {
