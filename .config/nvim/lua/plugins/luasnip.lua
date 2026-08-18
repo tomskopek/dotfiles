@@ -60,7 +60,20 @@ return {
       end
 
       local ipdb = ls.s("ipst", t("__import__('ipdb').set_trace()"))
-      ls.add_snippets("python", { ipdb })
+      local log_py = ls.s(
+        "clo",
+        fmt(
+          'print(f\'>>>>>>>>>> {logmsg} [{{__import__("inspect").stack()[0][3]}}] {{__file__}}:{{__import__("inspect").stack()[0][2]}}\')',
+          {
+            logmsg = c(1, {
+              { i(1) },
+              { t("{"), i(1, "var"), t("}") },
+            }),
+          }
+        )
+      )
+
+      ls.add_snippets("python", { ipdb, log_py })
     end,
   },
 }
