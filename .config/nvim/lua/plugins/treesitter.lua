@@ -6,6 +6,11 @@ return {
   {
     "nvim-treesitter/nvim-treesitter",
     enabled = true,
+    -- Pinned: upstream rewrote the plugin on `main` with an incompatible API
+    -- (no more nvim-treesitter.configs) and froze the legacy code. Everything
+    -- below uses the legacy API, so :Lazy update must not move this past the
+    -- lockfile. Unpin only when migrating this whole config to the new API.
+    pin = true,
     build = ":TSUpdate",
     config = function()
       local configs = require("nvim-treesitter.configs")
