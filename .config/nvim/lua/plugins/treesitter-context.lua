@@ -5,7 +5,11 @@ return {
   {
     "nvim-treesitter/nvim-treesitter-context",
     opts = {
-      max_lines = 3, -- Limit how many context lines can stack up (0 = unlimited)
+      max_lines = 5, -- Limit how many context lines can stack up (0 = unlimited)
+      -- When over max_lines, drop the innermost contexts (if/for blocks) first,
+      -- so the enclosing class/function names always stay visible.
+      -- (Default is 'outer', which drops class/function first — the opposite of useful.)
+      trim_scope = "inner",
       separator = "─", -- Line drawn under the context, highlighted with TreesitterContextSeparator
     },
     config = function(_, opts)
