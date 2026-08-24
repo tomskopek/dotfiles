@@ -44,24 +44,31 @@ return {
       desc = "[S]earch [D]irty (git changed files)",
     },
     {
-      "<leader>sD",
+      "<leader>sg",
       function()
+        -- Diff against the merge-base with main (not main's tip), so commits
+        -- main gained since branching don't pollute the list.
+        local base, ref = require("functions.git-main-merge-base")(vim.fn.getcwd())
+        if not base then
+          vim.notify("No main/master branch found", vim.log.levels.WARN)
+          return
+        end
         local previewers = require("telescope.previewers")
         require("telescope.pickers")
           .new({}, {
-            prompt_title = "Diff vs main",
+            prompt_title = ("Diff vs %s (merge-base %s)"):format(ref, base:sub(1, 7)),
             preview = { hide_on_startup = false },
-            finder = require("telescope.finders").new_oneshot_job({ "git", "diff", "--name-only", "main" }),
+            finder = require("telescope.finders").new_oneshot_job({ "git", "diff", "--name-only", base }),
             sorter = require("telescope.config").values.generic_sorter({}),
             previewer = previewers.new_termopen_previewer({
               get_command = function(entry)
-                return { "git", "diff", "main", "--", entry.value }
+                return { "git", "diff", base, "--", entry.value }
               end,
             }),
           })
           :find()
       end,
-      desc = "[S]earch [D]iff vs main (all changed files)",
+      desc = "[S]earch [G]it diff vs main (all changed files)",
     },
   },
   config = function()
