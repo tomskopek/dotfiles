@@ -65,3 +65,21 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.wo.winfixbuf = true
   end,
 })
+
+-- Auto-close the quickfix/location-list window when it's the last non-floating
+-- window left (e.g. :q from the main window with quickfix still open).
+-- Same pattern as the NvimTree auto-close in plugins/nvim-tree.lua.
+vim.api.nvim_create_autocmd("BufEnter", {
+  nested = true,
+  callback = function()
+    local non_floating = 0
+    for _, w in ipairs(vim.api.nvim_list_wins()) do
+      if vim.api.nvim_win_get_config(w).relative == "" then
+        non_floating = non_floating + 1
+      end
+    end
+    if non_floating == 1 and vim.bo.buftype == "quickfix" then
+      vim.cmd("quit")
+    end
+  end,
+})
