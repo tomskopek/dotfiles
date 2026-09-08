@@ -57,6 +57,13 @@ return {
           if not vim.api.nvim_buf_is_valid(bufnr) or vim.b[bufnr].gitsigns_main_base_applied then
             return
           end
+          -- Only real files on disk. Fugitive diff buffers (fugitive://...)
+          -- and other URI-backed buffers have no usable directory, and their
+          -- base is whatever revision fugitive opened them at anyway.
+          local name = vim.api.nvim_buf_get_name(bufnr)
+          if name == "" or name:find("^%w[%w+.-]*://") then
+            return
+          end
           -- The first update event fires before attach completes, where
           -- change_base silently no-ops — wait for a post-attach event.
           local ok, gs_cache = pcall(require, "gitsigns.cache")

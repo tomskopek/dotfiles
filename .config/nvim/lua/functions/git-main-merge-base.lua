@@ -5,11 +5,17 @@
 -- Tries origin/main, origin/master, main, master, so it works in repos with
 -- either naming and with or without a remote.
 --
--- Returns sha, ref — or nil if no candidate branch exists.
+-- Returns sha, ref — or nil if cwd isn't a real directory (e.g. a path derived
+-- from a fugitive:// buffer name) or no candidate branch exists.
 return function(cwd)
+  if not cwd or cwd == "" or vim.fn.isdirectory(cwd) == 0 then
+    return nil
+  end
   for _, ref in ipairs({ "origin/main", "origin/master", "main", "master" }) do
-    local obj = vim.system({ "git", "merge-base", ref, "HEAD" }, { cwd = cwd, text = true }):wait()
-    if obj.code == 0 then
+    local ok, obj = pcall(function()
+      return vim.system({ "git", "merge-base", ref, "HEAD" }, { cwd = cwd, text = true }):wait()
+    end)
+    if ok and obj.code == 0 then
       return vim.trim(obj.stdout), ref
     end
   end
