@@ -226,12 +226,20 @@ create_session() {
   [ "$first" = "2" ] || tmux move-window -d -s "=$name:$first" -t "=$name:2"
 }
 
+# Set by ensure_layout when it had to build the agent window, which means the
+# session is new or was still half-built.
+BAY_MADE_AGENT_WINDOW=0
+
 # Add whichever role windows are missing, and start their programs.
 ensure_layout() {
   local name=$1 root=$2 i
+  # Reset, so the answer is about this call and not a previous one: cmd_hub
+  # calls cmd_open in the same process.
+  BAY_MADE_AGENT_WINDOW=0
 
   if ! window_index_exists "$name" 0; then
     tmux new-window -d -t "=$name:0" -n claude -c "$root"
+    BAY_MADE_AGENT_WINDOW=1
     [ -n "$BAY_CLAUDE_CMD" ] && tmux send-keys -t "=$name:0" "$BAY_CLAUDE_CMD" C-m
   fi
 
@@ -289,7 +297,15 @@ cmd_open() {
     create_session "$name" "$root"
     ensure_layout "$name" "$root"
   fi
-  tmux select-window -t "=$name:0" 2>/dev/null || true
+
+  # Land on the agent only when we just built it: a brand new session, or `ws
+  # new` calling back here once its install finished in the sh window. Merely
+  # switching to a session you already have keeps the window you left it on,
+  # which tmux tracks per session -- selecting window 0 unconditionally is what
+  # used to throw that away on every switch.
+  if [ "$BAY_MADE_AGENT_WINDOW" = "1" ]; then
+    tmux select-window -t "=$name:0" 2>/dev/null || true
+  fi
   focus "$name"
 }
 
