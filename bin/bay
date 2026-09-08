@@ -1,0 +1,684 @@
+#!/usr/bin/env bash
+# bay — a hub for tmux sessions, one session per feature.
+#
+# Run `bay` with no arguments to open the hub. The hub lists every feature:
+# live sessions first, then workspaces that exist on disk with no session,
+# then any other tmux session. From the hub you switch, create, kill, or tear
+# down a feature.
+#
+#   bay              open the hub (bind this to a key; see tmux.conf)
+#                    keys: enter switch · C-t new · C-e rename · C-x kill
+#                          C-d done · C-n / C-p move down / up · C-r reload
+#   bay open <name>  create or complete the session, then switch to it
+#   bay kill <name>  kill the session, keep the files
+#   bay rename <old> <new>   rename the workspace, the session and its shells
+#
+# The hub is a switcher, so it behaves like one. Live sessions are listed in
+# the order you last visited them and the session you are in is named in the
+# header rather than listed, which puts the session you most likely want on
+# row one with the cursor already on it. Nothing an agent does reorders a row:
+# what it is doing shows in the mark, from `bay-hook`.
+#
+#   🔔 blocked on you   ✅ finished   ◐◓◑◒ working   ● idle   ○ no session
+#
+# The working mark spins. fzf has no timer, so `bay --tick` posts a frame to
+# the port fzf opens with --listen; it stops the moment the hub closes, and
+# skips the redraw entirely while no agent is working.
+#
+# Press prefix + b (see tmux.conf) to jump straight to whatever is blocked.
+#
+# Each session gets four windows, always at the same index:
+#   0 claude   runs the agent          2 sh    plain shell for git, curl, ...
+#   1 vim      runs the editor         3 srv   pre-split shells, nothing run
+#
+# Settings live in ~/.config/bay/config.sh — see bay.config.example.sh.
+# Workspace paths come from ~/.config/ws/config.sh, shared with `ws`.
+set -euo pipefail
+
+# --- config ------------------------------------------------------------------
+WS_CONFIG="${WS_CONFIG:-$HOME/.config/ws/config.sh}"
+# shellcheck disable=SC1090
+[ -f "$WS_CONFIG" ] && . "$WS_CONFIG"
+
+WS_ROOT="${WS_ROOT:-$HOME/ws}"
+DEV_ROOT="${DEV_ROOT:-$HOME/dev}"
+
+BAY_CONFIG="${BAY_CONFIG:-$HOME/.config/bay/config.sh}"
+# shellcheck disable=SC1090
+[ -f "$BAY_CONFIG" ] && . "$BAY_CONFIG"
+
+# Commands started in the claude and vim windows. Empty means "leave a shell".
+BAY_CLAUDE_CMD="${BAY_CLAUDE_CMD:-claude}"
+BAY_EDITOR_CMD="${BAY_EDITOR_CMD:-nvim}"
+# Panes in the srv window. No commands run in them.
+BAY_SRV_PANES="${BAY_SRV_PANES:-3}"
+# Plain clones from DEV_ROOT to list in the hub, for work that needs no
+# worktree at all, such as dotfiles. Space separated. Setting this is enough;
+# BAY_INCLUDE_DEV_REPOS=1 instead lists every repo in DEV_ROOT.
+BAY_DEV_REPOS="${BAY_DEV_REPOS:-}"
+BAY_INCLUDE_DEV_REPOS="${BAY_INCLUDE_DEV_REPOS:-0}"
+
+# Frames of the working spinner, separated by "|". Each one is padded to three
+# display cells to match the other marks, so a one-cell glyph needs two
+# trailing spaces and a two-cell emoji needs one. Seconds between frames, and
+# the frame count after which a hub left open stops ticking.
+BAY_SPIN_FRAMES="${BAY_SPIN_FRAMES:-◐  |◓  |◑  |◒  }"
+BAY_SPIN_INTERVAL="${BAY_SPIN_INTERVAL:-0.2}"
+BAY_SPIN_CAP="${BAY_SPIN_CAP:-900}"
+
+die() { printf '\033[1;31m[bay]\033[0m %s\n' "$*" >&2; exit 1; }
+
+printf -v TAB '\t'
+
+# `ws` ships next to `bay`. Resolve it by path, because PATH inside a tmux
+# popup or an fzf execute() is not the PATH of your interactive shell.
+# Parameter expansion, not dirname/basename: the hub opens often and every
+# process spawned here is ~5ms you wait for.
+BAY_DIR=${0%/*}
+[ "$BAY_DIR" = "$0" ] && BAY_DIR=.
+BAY_DIR=$(cd "$BAY_DIR" && pwd)
+BAY_SELF="$BAY_DIR/${0##*/}"
+WS_BIN="$BAY_DIR/ws"
+[ -x "$WS_BIN" ] || WS_BIN=$(command -v ws || true)
+
+# --- helpers -----------------------------------------------------------------
+
+has_session() { tmux has-session -t "=$1" 2>/dev/null; }
+
+is_repo() { [ -e "$DEV_ROOT/$1/.git" ]; }
+
+# The checked-out branch, read straight from .git. Sets REPLY. `git branch`
+# costs ~25ms per repo; a worktree's .git is a one-line pointer to the real
+# gitdir, and HEAD there is one line of text.
+branch_of() {
+  local gitdir=$1/.git line
+  REPLY=""
+  if [ -f "$gitdir" ]; then
+    read -r line < "$gitdir" 2>/dev/null || return 0
+    gitdir=${line#gitdir: }
+  fi
+  [ -r "$gitdir/HEAD" ] || return 0
+  read -r line < "$gitdir/HEAD" 2>/dev/null || return 0
+  case $line in
+    'ref: refs/heads/'*) REPLY=${line#ref: refs/heads/} ;;
+    *) REPLY=${line:0:7} ;;
+  esac
+}
+
+# Plain clones offered in the hub: the allowlist if there is one, otherwise
+# every repo in DEV_ROOT when BAY_INCLUDE_DEV_REPOS is on. Repos excluded in
+# the ws config (duplicate clones and such) never show up.
+dev_repos() {
+  local name d
+  REPLY=""
+  if [ -n "$BAY_DEV_REPOS" ]; then
+    for name in $BAY_DEV_REPOS; do
+      is_repo "$name" && REPLY="$REPLY $name"
+    done
+    REPLY=${REPLY# }
+    return 0
+  fi
+  [ "$BAY_INCLUDE_DEV_REPOS" = "1" ] || return 0
+  for d in "$DEV_ROOT"/*/; do
+    [ -e "$d.git" ] || continue
+    d=${d%/}; name=${d##*/}
+    case " ${WS_EXCLUDE_REPOS:-} " in *" $name "*) continue ;; esac
+    REPLY="$REPLY $name"
+  done
+  REPLY=${REPLY# }
+}
+
+# Repo directories inside a workspace. Sets REPLY.
+repos_of() {
+  local d
+  REPLY=""
+  for d in "$WS_ROOT/$1"/*/; do
+    [ -e "$d.git" ] || continue
+    d=${d%/}
+    REPLY="$REPLY ${d##*/}"
+  done
+  REPLY=${REPLY# }
+}
+
+# Where the windows should start. A one-repo workspace roots at that repo, so
+# git and the editor work at once. A multi-repo workspace roots at the top.
+root_for() {
+  local name=$1 count
+  if [ -d "$WS_ROOT/$name" ]; then
+    repos_of "$name"
+    # shellcheck disable=SC2086
+    set -- $REPLY
+    count=$#
+    if [ "$count" = "1" ]; then
+      echo "$WS_ROOT/$name/$1"
+    else
+      echo "$WS_ROOT/$name"
+    fi
+    return 0
+  fi
+  if [ -e "$DEV_ROOT/$name/.git" ]; then
+    echo "$DEV_ROOT/$name"
+    return 0
+  fi
+  return 1
+}
+
+# Seconds -> "3m", "2h", "4d". Sets REPLY, because the hub calls this once
+# per row and $( ) would fork for each one.
+human_idle() {
+  local s=$1
+  if [ "$s" -lt 60 ]; then REPLY="${s}s"
+  elif [ "$s" -lt 3600 ]; then REPLY="$((s / 60))m"
+  elif [ "$s" -lt 86400 ]; then REPLY="$((s / 3600))h"
+  else REPLY="$((s / 86400))d"
+  fi
+}
+
+# --- attention ---------------------------------------------------------------
+# `bay-hook` records what each agent is doing in a tmux window option. Bells
+# are no use here: Claude Code only rings one on some notification channels,
+# and tmux drops the flag as soon as any client looks at the window.
+# One frame of the working spinner, by index. Sets REPLY.
+spin_mark() {
+  local i=$1 n
+  local IFS='|'
+  # shellcheck disable=SC2086
+  set -- $BAY_SPIN_FRAMES
+  n=$#
+  if [ "$n" -lt 1 ]; then REPLY='◐  '; return 0; fi
+  i=$((i % n + 1))
+  eval "REPLY=\${$i}"
+}
+
+# True when any agent is working, so the spinner has something to spin for.
+any_busy() {
+  case "$(tmux list-windows -a -F '#{@bay_state}' 2>/dev/null)" in
+    *busy*) return 0 ;;
+  esac
+  return 1
+}
+
+# The right-hand column of a hub row. Sets REPLY.
+# $1 state, $2 seconds in that state, $3 the plain idle text to fall back on.
+state_label() {
+  local state=$1 age
+  case "$state" in
+    wait | done | busy) human_idle "$2"; age=$REPLY ;;
+    *) REPLY=$3; return 0 ;;
+  esac
+  case "$state" in
+    wait) REPLY="🔔 needs you $age" ;;
+    done) REPLY="✅ done $age" ;;
+    busy) REPLY="◐ working $age" ;;
+  esac
+}
+
+window_index_exists() {
+  tmux list-windows -t "=$1" -F '#{window_index}' 2>/dev/null | grep -qx "$2"
+}
+
+# Create the session with only the sh window, held at index 2. Both entry
+# points share this, so ensure_layout always starts the programs itself.
+create_session() {
+  local name=$1 root=$2 first
+  tmux new-session -d -s "$name" -c "$root" -n sh
+  first=$(tmux list-windows -t "=$name" -F '#{window_index}' | head -1)
+  [ "$first" = "2" ] || tmux move-window -d -s "=$name:$first" -t "=$name:2"
+}
+
+# Add whichever role windows are missing, and start their programs.
+ensure_layout() {
+  local name=$1 root=$2 i
+
+  if ! window_index_exists "$name" 0; then
+    tmux new-window -d -t "=$name:0" -n claude -c "$root"
+    [ -n "$BAY_CLAUDE_CMD" ] && tmux send-keys -t "=$name:0" "$BAY_CLAUDE_CMD" C-m
+  fi
+
+  if ! window_index_exists "$name" 1; then
+    tmux new-window -d -t "=$name:1" -n vim -c "$root"
+    [ -n "$BAY_EDITOR_CMD" ] && tmux send-keys -t "=$name:1" "$BAY_EDITOR_CMD" C-m
+  fi
+
+  if ! window_index_exists "$name" 2; then
+    tmux new-window -d -t "=$name:2" -n sh -c "$root"
+  fi
+
+  if ! window_index_exists "$name" 3; then
+    tmux new-window -d -t "=$name:3" -n srv -c "$root"
+    i=1
+    while [ "$i" -lt "$BAY_SRV_PANES" ]; do
+      tmux split-window -d -t "=$name:3" -c "$root"
+      i=$((i + 1))
+    done
+    tmux select-layout -t "=$name:3" even-vertical >/dev/null
+  fi
+}
+
+# The sh window is created before `ws new` adds the worktrees, so it can sit
+# at the workspace root while the other windows sit in the repo. Move it.
+resync_sh_window() {
+  local name=$1 root=$2 cur
+  cur=$(tmux display-message -p -t "=$name:2" '#{pane_current_path}' 2>/dev/null) || return 0
+  [ "$cur" = "$root" ] && return 0
+  # Leading space keeps this out of shell history.
+  tmux send-keys -t "=$name:2" " cd '$root'" C-m
+}
+
+focus() {
+  local name=$1
+  if [ -n "${TMUX:-}" ]; then
+    tmux switch-client -t "=$name"
+  else
+    tmux attach-session -t "=$name"
+  fi
+}
+
+# --- commands ----------------------------------------------------------------
+
+cmd_open() {
+  local name=${1:-}
+  [ -n "$name" ] || die "usage: bay open <name>"
+  local root
+  root=$(root_for "$name") || die "no workspace or repo named $name"
+
+  if has_session "$name"; then
+    ensure_layout "$name" "$root"
+    resync_sh_window "$name" "$root"
+  else
+    create_session "$name" "$root"
+    ensure_layout "$name" "$root"
+  fi
+  tmux select-window -t "=$name:0" 2>/dev/null || true
+  focus "$name"
+}
+
+cmd_kill() {
+  local name=${1:-}
+  [ -n "$name" ] || die "usage: bay kill <name>"
+  has_session "$name" || return 0
+  tmux kill-session -t "=$name"
+}
+
+# Rename a feature: the workspace directory and its worktree registrations
+# (delegated to `ws`), the tmux session, and the shells sitting inside it.
+cmd_rename() {
+  local old=${1:-} new=${2:-}
+  [ -n "$old" ] && [ -n "$new" ] || die "usage: bay rename <old> <new>"
+  [ "$old" = "$new" ] && return 0
+  case "$new" in
+    *[!a-zA-Z0-9._-]*) die "use letters, digits, dot, dash, underscore only" ;;
+  esac
+  has_session "$new" && die "session $new already exists"
+  [ -e "$WS_ROOT/$new" ] && die "workspace $new already exists"
+  is_repo "$new" && die "$new is already a repo in $DEV_ROOT"
+
+  # A plain clone's name is the clone's own directory. Renaming that is a
+  # different job than renaming a feature, so say so instead of guessing.
+  if [ ! -d "$WS_ROOT/$old" ] && is_repo "$old"; then
+    die "$old is a plain clone in $DEV_ROOT, not a workspace"
+  fi
+  [ -d "$WS_ROOT/$old" ] || has_session "$old" || die "no workspace or session named $old"
+
+  if [ -d "$WS_ROOT/$old" ]; then
+    [ -n "$WS_BIN" ] || die "cannot find the ws script"
+    "$WS_BIN" rename "$old" "$new" || die "ws rename failed, session left as $old"
+  fi
+
+  has_session "$old" || return 0
+  tmux rename-session -t "=$old" "$new"
+
+  # The directory moved out from under every shell in the session. They keep
+  # working -- a rename leaves the inode alone -- but $PWD is now a path that
+  # no longer exists, which is what the prompt and the status line print. Send
+  # a cd to the shells, and only to the shells: the same keystrokes typed into
+  # an editor or an agent would land in its input.
+  local pane cmd path target old_root="$WS_ROOT/$old" new_root="$WS_ROOT/$new"
+  [ -d "$new_root" ] || return 0
+  while IFS='|' read -r pane cmd path; do
+    # tmux reads a pane's cwd from the process, not from a stored string, so by
+    # now it already reports the new path -- matching only on the old one found
+    # nothing. Accept either and let the shell catch up to what tmux says.
+    case "$path" in
+      "$new_root" | "$new_root"/*) target=$path ;;
+      "$old_root" | "$old_root"/*) target="$new_root${path#"$old_root"}" ;;
+      *) continue ;;
+    esac
+    case "$cmd" in sh | bash | zsh | fish | dash | ksh) ;; *) continue ;; esac
+    # Leading space keeps this out of shell history.
+    tmux send-keys -t "$pane" " cd '$target'" C-m
+  done < <(tmux list-panes -s -t "=$new" -F '#{pane_id}|#{pane_current_command}|#{pane_current_path}' 2>/dev/null)
+}
+
+# Ask for the new name, from the hub. Runs cmd_rename in a subshell so that a
+# die() leaves us alive to hold the message on screen.
+cmd_rename_prompt() {
+  local old=${1:-} new
+  [ -n "$old" ] || return 0
+  printf 'rename %s to: ' "$old"
+  read -r new || return 0
+  [ -n "$new" ] || return 0
+  if ! ( cmd_rename "$old" "$new" ); then
+    printf '\npress enter to continue '
+    read -r _ || true
+  fi
+}
+
+# One row per feature: the name, a tab, then a pre-padded display string.
+# fzf shows field 2 only and hands field 1 back to us, so the columns line up
+# whatever the names are. Sets REPLY.
+#
+# $2 is pre-padded to three display cells by the caller, not by printf: printf
+# counts bytes, and 🔔/✅ are two cells wide where ●/○ are one.
+row() {
+  local name=$1 mark=$2 word=$3 where=$4 age=$5 dim=${6:-} disp=$1
+  [ ${#disp} -gt 18 ] && disp="${disp:0:17}…"
+  [ ${#where} -gt 18 ] && where="${where:0:17}…"
+  if [ -n "$dim" ]; then
+    printf -v REPLY '%s\t\033[2m%s%-18s %-9s %-18s %4s\033[0m' \
+      "$name" "$mark" "$disp" "$word" "$where" "$age"
+  else
+    printf -v REPLY '%s\t%s%-18s %-9s %-18s %4s' \
+      "$name" "$mark" "$disp" "$word" "$where" "$age"
+  fi
+}
+
+# The fzf header: where you are, and what your own agent is up to. The session
+# you are in has no row of its own on purpose -- a switcher whose first row is
+# the thing you are already looking at makes every switch start with a
+# keystroke that goes nowhere, which is why alt-tab and Ctrl+Tab skip it too.
+cmd_header() {
+  local out name wins w state since r best="" bestat=0 bestr=0 now
+  # Outside tmux there is no session you are in, so there is nothing to name
+  # and cmd_rows leaves every session in the list.
+  out=""
+  [ -n "${TMUX:-}" ] && { out=$(tmux display-message -p '#{session_name}|#{W:#{@bay_state}:#{@bay_since} }' 2>/dev/null) || out=""; }
+  name=${out%%|*}
+  wins=${out#*|}
+  for w in $wins; do
+    state=${w%%:*}; since=${w#*:}
+    case $state in wait) r=3 ;; done) r=2 ;; busy) r=1 ;; *) continue ;; esac
+    if [ "$r" -gt "$bestr" ]; then bestr=$r; best=$state; bestat=${since:-0}; fi
+  done
+  if [ -n "$name" ] && [ -n "$best" ]; then
+    now=$(date +%s)
+    state_label "$best" "$((now - bestat))" ''
+    printf 'in %s   %s\n' "$name" "$REPLY"
+  elif [ -n "$name" ]; then
+    printf 'in %s\n' "$name"
+  fi
+  printf 'enter switch · C-t new · C-e rename · C-x kill · C-d done · C-r reload'
+}
+
+cmd_rows() {
+  local frame=${1:-0}
+  local now here="" dump live="" names="|"
+  local tag a b c d name last act wins mark word where age state tmp r
+  local wsess="" wrank=0 wstate="" wsince="" states=" " sessions="" list dir
+  now=$(date +%s)
+
+  # One tmux round trip for the lot: the session you are in, every session,
+  # and every window bay has flagged. A tmux command is a ~9ms round trip to
+  # the server, so the count of them is what the hub's latency is made of.
+  # #{S:...} loops over sessions and #{W:...} over that session's windows, so
+  # each W line below belongs to the S line above it.
+  dump=$(tmux display-message -p 'H|#{session_name}#{S:
+S|#{session_name}|#{session_last_attached}|#{session_activity}|#{session_windows}#{W:
+W|#{@bay_state}|#{@bay_since}}}' 2>/dev/null) || dump=""
+
+  # Roll the window states up per session as we read, then look them up by
+  # name out of one string. Bash 3.2 has no associative arrays.
+  while IFS='|' read -r tag a b c d; do
+    case $tag in
+      H) [ -n "${TMUX:-}" ] && here=$a ;;
+      S)
+        [ -n "$wsess" ] && states="$states$wsess=$wrank:$wstate:$wsince "
+        wsess=$a; wrank=0; wstate=""; wsince=""
+        names="$names$a|"
+        sessions="$sessions$a|$b|$c|$d
+"
+        ;;
+      W)
+        case $a in wait) r=3 ;; done) r=2 ;; busy) r=1 ;; *) r=0 ;; esac
+        if [ "$r" -gt "$wrank" ]; then wrank=$r; wstate=$a; wsince=$b; fi
+        ;;
+    esac
+  done <<EOF
+$dump
+EOF
+  [ -n "$wsess" ] && states="$states$wsess=$wrank:$wstate:$wsince "
+
+  # Live sessions, in the order you last visited them -- so row one is where
+  # you were before this one, and nothing an agent does moves a row. An agent
+  # writing to its pane bumps session_activity constantly; ordering on that is
+  # what made rows shuffle between openings.
+  while IFS='|' read -r name last act wins; do
+    [ -n "$name" ] || continue
+    [ "$name" = "$here" ] && continue
+
+    if [ -d "$WS_ROOT/$name" ]; then
+      repos_of "$name"
+      where="${REPLY:-no repos yet}"
+    elif is_repo "$name"; then
+      branch_of "$DEV_ROOT/$name"
+      where=$REPLY
+    else
+      where="$wins windows"
+    fi
+
+    state=""
+    case "$states" in
+      *" $name="*)
+        tmp=${states#*" $name="}; tmp=${tmp%% *}
+        tmp=${tmp#*:}; state=${tmp%%:*}
+        ;;
+    esac
+    case $state in
+      wait) mark='🔔 '; word='needs you' ;;
+      done) mark='✅ '; word='done' ;;
+      # The spinner says "working" better than the word did, so the word
+      # column stays empty and the row keeps one signal, not two.
+      busy) spin_mark "$frame"; mark=$REPLY; word='' ;;
+      *)    mark='●  '; word='' ;;
+    esac
+
+    # Time since you were last in it, which is also what the list is sorted
+    # on, so the column reads top to bottom as one increasing run.
+    if [ "${last:-0}" -gt 0 ]; then
+      human_idle "$((now - last))"; age=$REPLY
+    else
+      age='-'
+    fi
+
+    row "$name" "$mark" "$word" "$where" "$age"
+    live="$live$last|$REPLY
+"
+  done <<EOF
+$sessions
+EOF
+  [ -n "$live" ] && printf '%s' "$live" | sort -t'|' -k1,1nr | cut -d'|' -f2-
+
+  # Then what has no session yet: dimmed and always last, so the live block
+  # above it is a fixed target for the eye.
+  if [ -d "$WS_ROOT" ]; then
+    for dir in "$WS_ROOT"/*/; do
+      [ -d "$dir" ] || continue
+      dir=${dir%/}; name=${dir##*/}
+      case "$names" in *"|$name|"*) continue ;; esac
+      repos_of "$name"
+      row "$name" '○  ' '' "$REPLY" '' dim
+      printf '%s\n' "$REPLY"
+    done
+  fi
+
+  dev_repos; list=$REPLY
+  for name in $list; do
+    case "$names" in *"|$name|"*) continue ;; esac
+    [ -d "$WS_ROOT/$name" ] && continue
+    branch_of "$DEV_ROOT/$name"
+    row "$name" '○  ' '' "$REPLY" '' dim
+    printf '%s\n' "$REPLY"
+  done
+}
+
+# Drive the working spinner. fzf has no timer event, so the frames come from
+# out here: one POST per frame to the port fzf opened with --listen, each
+# carrying the next frame number for `bay --rows`. Reload keeps the cursor and
+# the query, and the preview is bound to `focus` rather than --preview, so a
+# reload does not re-run it.
+cmd_tick() {
+  local port=${1:-} n=0 act
+  [ -n "$port" ] || return 0
+  command -v curl >/dev/null 2>&1 || return 0
+
+  while [ "$n" -lt "$BAY_SPIN_CAP" ]; do
+    # Nothing is working, so there is nothing to redraw. Still talk to fzf,
+    # because a failed POST is how we learn the hub has closed.
+    if any_busy; then act="reload($BAY_SELF --rows $n)"; else act=ignore; fi
+    curl -s -XPOST "http://localhost:$port" -d "$act" >/dev/null 2>&1 || return 0
+    n=$((n + 1))
+    sleep "$BAY_SPIN_INTERVAL"
+  done
+}
+
+cmd_preview() {
+  local name=${1:-} now wins label state since wt dirty
+  [ -n "$name" ] || return 0
+
+  # One call, and its failure is also the "no such session" answer.
+  wins=$(tmux list-windows -t "=$name" -F \
+    '  #{window_index} #{window_name}#{?window_active, (active),}|#{@bay_state}|#{@bay_since}' 2>/dev/null) || wins=""
+
+  if [ -n "$wins" ]; then
+    now=$(date +%s)
+    printf '\033[1mwindows\033[0m\n'
+    while IFS='|' read -r label state since; do
+      if [ -n "$state" ]; then
+        state_label "$state" "$((now - since))" ''
+        printf '%-24s %s\n' "$label" "$REPLY"
+      else
+        printf '%s\n' "$label"
+      fi
+    done <<EOF
+$wins
+EOF
+    printf '\n'
+  fi
+
+  if [ -d "$WS_ROOT/$name" ]; then
+    printf '\033[1mrepos\033[0m\n'
+    for wt in "$WS_ROOT/$name"/*/; do
+      [ -e "$wt.git" ] || continue
+      wt=${wt%/}
+      dirty=""
+      [ -n "$(git --no-optional-locks -C "$wt" status --porcelain 2>/dev/null)" ] && dirty=" *dirty"
+      branch_of "$wt"
+      printf '  %-16s %s%s\n' "${wt##*/}" "$REPLY" "$dirty"
+    done
+  elif [ -e "$DEV_ROOT/$name/.git" ]; then
+    branch_of "$DEV_ROOT/$name"
+    printf '\033[1mrepo\033[0m\n  %s  %s\n' "$name" "$REPLY"
+  fi
+}
+
+# Ask for a name and repos, then open a session and run `ws new` inside it, so
+# the install output is visible and the other windows are usable right away.
+cmd_new() {
+  local name repos
+  printf 'feature name: '
+  read -r name || return 0
+  [ -n "$name" ] || return 0
+  case "$name" in
+    *[!a-zA-Z0-9._-]*) die "use letters, digits, dot, dash, underscore only" ;;
+  esac
+  [ -d "$WS_ROOT/$name" ] && die "workspace $name already exists"
+  has_session "$name" && die "session $name already exists"
+
+  [ -n "$WS_BIN" ] || die "cannot find the ws script"
+  repos=$("$WS_BIN" repos | fzf --multi --prompt="repos for $name (tab to multi-select)> ") || return 0
+  [ -n "$repos" ] || return 0
+
+  mkdir -p "$WS_ROOT/$name"
+  create_session "$name" "$WS_ROOT/$name"
+
+  # The command runs in a fresh shell, which does not inherit our environment.
+  # Pass non-default config paths through so they survive the hop.
+  local envpfx=""
+  [ "$WS_CONFIG" != "$HOME/.config/ws/config.sh" ] && envpfx="WS_CONFIG='$WS_CONFIG' "
+  [ "$BAY_CONFIG" != "$HOME/.config/bay/config.sh" ] && envpfx="${envpfx}BAY_CONFIG='$BAY_CONFIG' "
+
+  # `ws new` calls `bay open` when it finishes, which adds the other windows.
+  tmux send-keys -t "=$name:2" "${envpfx}$WS_BIN new $name $(echo "$repos" | tr '\n' ' ')" C-m
+  focus "$name"
+}
+
+cmd_done() {
+  local name=${1:-}
+  [ -n "$name" ] || return 0
+  [ -d "$WS_ROOT/$name" ] || die "$name is not a workspace"
+  printf 'tear down %s — remove worktrees and session? [y/N] ' "$name"
+  local reply
+  read -r reply || return 0
+  case "$reply" in
+    y | Y) ;;
+    *) return 0 ;;
+  esac
+  [ -n "$WS_BIN" ] || die "cannot find the ws script"
+  "$WS_BIN" done "$name"
+  printf '\npress enter to continue '
+  read -r _ || true
+}
+
+cmd_hub() {
+  command -v fzf >/dev/null || die "fzf is required for the hub"
+  local self=$BAY_SELF picked
+  # No --sync and no cursor nudge: row one is already the session you want,
+  # because the one you are in is named in the header instead of listed.
+  picked=$(cmd_rows | fzf \
+    --delimiter="$TAB" \
+    --with-nth=2 \
+    --ansi \
+    --no-sort \
+    --layout=reverse \
+    --prompt='bay> ' \
+    --header="$(cmd_header)" \
+    --listen \
+    --preview-window=right,45%,border-left \
+    --bind="focus:preview($self --preview {1})" \
+    --bind="start:execute-silent($self --tick \$FZF_PORT &)" \
+    --bind='ctrl-n:down,ctrl-p:up' \
+    --bind="ctrl-r:reload($self --rows)" \
+    --bind="ctrl-t:execute($self --new)+reload($self --rows)" \
+    --bind="ctrl-e:execute($self --rename {1})+reload($self --rows)" \
+    --bind="ctrl-x:execute-silent($self kill {1})+reload($self --rows)" \
+    --bind="ctrl-d:execute($self --done {1})+reload($self --rows)") || return 0
+
+  [ -n "$picked" ] || return 0
+  local name
+  name=$(printf '%s' "$picked" | cut -f1)
+  [ -n "$name" ] || return 0
+
+  # A session that is not a workspace or repo: just switch to it.
+  if has_session "$name" && [ ! -d "$WS_ROOT/$name" ] && ! root_for "$name" >/dev/null 2>&1; then
+    focus "$name"
+    return 0
+  fi
+  cmd_open "$name"
+}
+
+case "${1:-hub}" in
+  hub) cmd_hub ;;
+  open) shift; cmd_open "$@" ;;
+  kill) shift; cmd_kill "$@" ;;
+  rename | mv) shift; cmd_rename "$@" ;;
+  --rows) shift; cmd_rows "$@" ;;   # internal, used by fzf
+  --header) cmd_header ;;           # internal
+  --tick) shift; cmd_tick "$@" ;;   # internal, drives the spinner
+  --preview) shift; cmd_preview "$@" ;;
+  --new) cmd_new ;;
+  --rename) shift; cmd_rename_prompt "$@" ;;
+  --done) shift; cmd_done "$@" ;;
+  # The comment block at the top, however long it grows.
+  help | -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0" ;;
+  *) die "unknown command: $1 (try: bay help)" ;;
+esac

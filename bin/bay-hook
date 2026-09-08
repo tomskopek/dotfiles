@@ -1,0 +1,275 @@
+#!/usr/bin/env bash
+# bay-hook — tells bay when an agent needs you.
+#
+# tmux bells are not a reliable signal: Claude Code only rings one on some
+# notification channels, and tmux clears the flag as soon as any client looks
+# at the window. So bay keeps its own state, written by Claude Code hooks and
+# stored as a tmux window option.
+#
+#   @bay_state   busy | wait | done      @bay_since   epoch seconds
+#
+#   busy  the agent is working, leave it alone
+#   wait  the agent is blocked on you (permission, or an idle prompt)
+#   done  the agent finished its turn, the answer is waiting
+#
+# Commands
+#   bay-hook event            read a Claude Code hook payload on stdin
+#   bay-hook status           status-line summary; also clears seen windows
+#   bay-hook sweep            clear windows you are looking at, print nothing
+#   bay-hook next             switch to the session that needs you most
+#   bay-hook list             one line per flagged window (state, session, age)
+#   bay-hook install          print the settings.json hook block
+#
+# Install: run `bay-hook install` and merge the block into ~/.claude/settings.json.
+# Settings live in ~/.config/bay/config.sh — see bay.config.example.sh.
+set -uo pipefail
+
+BAY_CONFIG="${BAY_CONFIG:-$HOME/.config/bay/config.sh}"
+# shellcheck disable=SC1090
+[ -f "$BAY_CONFIG" ] && . "$BAY_CONFIG"
+
+# Flash a tmux message on every attached client when a background agent needs
+# you. This is the part that actually gets your attention.
+BAY_ALERT_MESSAGE="${BAY_ALERT_MESSAGE:-1}"
+# Run for the same transitions, with the state and session name as arguments.
+# Use it for a desktop notification or a sound. Empty means do nothing.
+BAY_ALERT_CMD="${BAY_ALERT_CMD:-}"
+# States that count as "needs you". Drop `done` to only alert on blocks.
+BAY_ALERT_STATES="${BAY_ALERT_STATES:-wait done}"
+
+command -v tmux >/dev/null 2>&1 || exit 0
+
+# --- json --------------------------------------------------------------------
+
+# Read one top-level string field. jq if it is there, python3 if not.
+json_get() {
+  local payload=$1 key=$2
+  if command -v jq >/dev/null 2>&1; then
+    printf '%s' "$payload" | jq -r --arg k "$key" '.[$k] // empty' 2>/dev/null
+  elif command -v python3 >/dev/null 2>&1; then
+    printf '%s' "$payload" | python3 -c '
+import json, sys
+try:
+    v = json.load(sys.stdin).get(sys.argv[1], "")
+except Exception:
+    v = ""
+print(v if isinstance(v, str) else "")
+' "$key" 2>/dev/null
+  fi
+}
+
+# --- state -------------------------------------------------------------------
+
+state_rank() {
+  case "$1" in
+    wait) echo 3 ;;
+    done) echo 2 ;;
+    busy) echo 1 ;;
+    *) echo 0 ;;
+  esac
+}
+
+badge() {
+  case "$1" in
+    wait) echo '🔔' ;;
+    done) echo '✅' ;;
+    busy) echo '◐' ;;
+    *) echo '' ;;
+  esac
+}
+
+# Every window, flagged or not: window id, session, index, state, since,
+# whether it is the active window, and whether its session has a client.
+# Callers skip the unflagged rows themselves -- an awk here would be a second
+# process, and the status line runs this twice a second on every client.
+flagged() {
+  tmux list-windows -a -F \
+    '#{window_id}|#{session_name}|#{window_index}|#{@bay_state}|#{@bay_since}|#{window_active}|#{session_attached}' \
+    2>/dev/null
+}
+
+set_state() {
+  local pane=$1 state=$2
+  tmux set-option -w -t "$pane" @bay_state "$state" 2>/dev/null || return 1
+  tmux set-option -w -t "$pane" @bay_since "$(date +%s)" 2>/dev/null
+}
+
+clear_state() {
+  tmux set-option -wu -t "$1" @bay_state 2>/dev/null
+  tmux set-option -wu -t "$1" @bay_since 2>/dev/null
+}
+
+# The pane the agent runs in. Claude Code inherits TMUX_PANE from the shell
+# bay started it in, so this is almost always set. The fallback matches the
+# hook's cwd against the panes running an agent.
+resolve_pane() {
+  local cwd=${1:-} pane path cmd
+  if [ -n "${TMUX_PANE:-}" ] && tmux display-message -p -t "$TMUX_PANE" '#{window_id}' >/dev/null 2>&1; then
+    printf '%s' "$TMUX_PANE"
+    return 0
+  fi
+  [ -n "$cwd" ] || return 1
+  while IFS='|' read -r pane path cmd; do
+    [ "$path" = "$cwd" ] || continue
+    case "$cmd" in *claude* | node | bun | deno) printf '%s' "$pane"; return 0 ;; esac
+  done < <(tmux list-panes -a -F '#{pane_id}|#{pane_current_path}|#{pane_current_command}' 2>/dev/null)
+  return 1
+}
+
+# --- alerting ----------------------------------------------------------------
+
+alerts_on_for() {
+  case " $BAY_ALERT_STATES " in *" $1 "*) return 0 ;; esac
+  return 1
+}
+
+# Tell every client that is not already looking at this session.
+announce() {
+  local session=$1 state=$2 client cur text
+  text="$(badge "$state") $session — $([ "$state" = wait ] && echo 'needs you' || echo 'done')"
+
+  if [ "$BAY_ALERT_MESSAGE" = "1" ]; then
+    while read -r client; do
+      [ -n "$client" ] || continue
+      cur=$(tmux display-message -p -c "$client" '#{session_name}' 2>/dev/null)
+      [ "$cur" = "$session" ] && continue
+      tmux display-message -c "$client" -d 4000 "$text" 2>/dev/null
+    done < <(tmux list-clients -F '#{client_name}' 2>/dev/null)
+  fi
+
+  [ -n "$BAY_ALERT_CMD" ] && ( eval "$BAY_ALERT_CMD" "$state" "$session" >/dev/null 2>&1 & )
+  return 0
+}
+
+# --- commands ----------------------------------------------------------------
+
+# One Claude Code hook payload on stdin. Never fail: a non-zero exit here is
+# noise in the agent's transcript.
+cmd_event() {
+  local payload event cwd pane state prev session active attached
+  payload=$(cat 2>/dev/null)
+  event=$(json_get "$payload" hook_event_name)
+  cwd=$(json_get "$payload" cwd)
+
+  case "$event" in
+    Notification) state=wait ;;
+    Stop) state=done ;;
+    UserPromptSubmit | PreCompact) state=busy ;;
+    SessionStart | SessionEnd) state=clear ;;
+    *) exit 0 ;;
+  esac
+
+  pane=$(resolve_pane "$cwd") || exit 0
+
+  if [ "$state" = clear ]; then
+    clear_state "$pane"
+    exit 0
+  fi
+
+  prev=$(tmux display-message -p -t "$pane" '#{@bay_state}' 2>/dev/null)
+  [ "$prev" = "$state" ] && exit 0
+
+  IFS='|' read -r session active attached < <(
+    tmux display-message -p -t "$pane" '#{session_name}|#{window_active}|#{session_attached}' 2>/dev/null
+  )
+
+  # You are looking straight at it, so there is nothing to alert you about.
+  # This applies to wait and done only. `busy` is not an alert, it is status:
+  # UserPromptSubmit fires the moment you hit enter, which is necessarily a
+  # moment you are looking at the window, so clearing it here would mean the
+  # state could never once be recorded -- and the row would read idle the
+  # instant you switched away from a working agent.
+  if [ "$state" != busy ] && [ "$active" = "1" ] && [ "${attached:-0}" != "0" ]; then
+    clear_state "$pane"
+    exit 0
+  fi
+
+  set_state "$pane" "$state" || exit 0
+  alerts_on_for "$state" && announce "$session" "$state"
+  exit 0
+}
+
+# Drop the flag on any window you are now looking at. Called from the status
+# line, so switching to a session clears it within one status interval.
+cmd_sweep() {
+  local wid session idx state since active attached
+  while IFS='|' read -r wid session idx state since active attached; do
+    case $state in wait | done) ;; *) continue ;; esac
+    [ "$active" = "1" ] || continue
+    [ "${attached:-0}" != "0" ] || continue
+    clear_state "$wid"
+  done < <(flagged)
+}
+
+# Flagged windows, most urgent first: "state session index since".
+cmd_list() {
+  local wid session idx state since active attached rank
+  while IFS='|' read -r wid session idx state since active attached; do
+    case "$state" in wait) rank=3 ;; done) rank=2 ;; *) continue ;; esac
+    printf '%s %s %s %s %s\n' "$rank" "$state" "$session" "$idx" "${since:-0}"
+  done < <(flagged) | sort -k1,1nr -k5,5n | cut -d' ' -f2-
+}
+
+# Sweep and summarise in a single pass over one tmux call. This runs on every
+# status refresh, so it does no more work than that.
+cmd_status() {
+  local wid session idx state since active attached
+  local waits=" " dones=" " out=""
+  while IFS='|' read -r wid session idx state since active attached; do
+    case $state in wait | done) ;; *) continue ;; esac
+    if [ "$active" = "1" ] && [ "${attached:-0}" != "0" ]; then
+      clear_state "$wid"
+      continue
+    fi
+    case "$state" in
+      wait) case "$waits" in *" $session "*) ;; *) waits="$waits$session " ;; esac ;;
+      done) case "$dones" in *" $session "*) ;; *) dones="$dones$session " ;; esac ;;
+    esac
+  done < <(flagged)
+
+  for session in $waits; do out="$out 🔔$session"; done
+  # A session that is blocked is already named; do not name it twice.
+  for session in $dones; do
+    case "$waits" in *" $session "*) continue ;; esac
+    out="$out ✅$session"
+  done
+  # The separator lives here, not in the status line, so the line collapses
+  # cleanly to nothing when no agent wants you.
+  [ -n "$out" ] && printf ':: %s' "${out# }"
+  return 0
+}
+
+cmd_next() {
+  local state session idx since
+  read -r state session idx since < <(cmd_list) || return 0
+  [ -n "${session:-}" ] || return 0
+  tmux switch-client -t "=$session" 2>/dev/null || tmux attach-session -t "=$session"
+  tmux select-window -t "=$session:$idx" 2>/dev/null
+}
+
+cmd_install() {
+  local self
+  self=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+  cat <<EOF
+Merge into the "hooks" object of ~/.claude/settings.json:
+
+  "Notification":     [{ "hooks": [{ "type": "command", "command": "$self event", "async": true }] }],
+  "Stop":             [{ "hooks": [{ "type": "command", "command": "$self event", "async": true }] }],
+  "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "$self event", "async": true }] }],
+  "SessionStart":     [{ "hooks": [{ "type": "command", "command": "$self event", "async": true }] }],
+  "SessionEnd":       [{ "hooks": [{ "type": "command", "command": "$self event", "async": true }] }]
+
+If an entry already exists, add this command to its "hooks" array.
+EOF
+}
+
+case "${1:-status}" in
+  event) cmd_event ;;
+  status) cmd_status ;;
+  sweep) cmd_sweep ;;
+  next) cmd_next ;;
+  list) cmd_list ;;
+  install) cmd_install ;;
+  help | -h | --help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) printf 'bay-hook: unknown command: %s\n' "$1" >&2; exit 1 ;;
+esac
