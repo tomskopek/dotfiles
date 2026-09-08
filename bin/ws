@@ -10,8 +10,13 @@
 #
 #   ws new <name> [repo...]   create workspace (fzf multi-select repos if omitted)
 #   ws add [repo...]          add repos to the workspace you're currently inside
+#   ws rename <old> <new>     rename the workspace dir and re-link its worktrees
 #   ws done [name] [--force]  remove worktrees + workspace dir (branches survive)
 #   ws list|ls                workspaces, their repos, branches, dirty state
+#
+# Renaming moves the directory and repairs each worktree's registration. It
+# does not rename branches: a workspace names the feature, not a branch, and
+# the seed branch may already be pushed or have a PR open.
 #
 # Machine-specific settings (repo names, local config to copy) live in
 # ~/.config/ws/config.sh — see ws.config.example.sh. Nothing here is
@@ -71,6 +76,33 @@ canonical_of() {
   local wt=$1 common
   common=$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
   dirname "$common"
+}
+
+# Point a moved worktree's submodules back at their checkouts.
+#
+# `git worktree repair` fixes the worktree's own registration but leaves every
+# submodule's core.worktree aimed at the old path, and git 2.50 then fails with
+# "cannot chdir to ..." for every command run inside the submodule. `submodule
+# update --init` does fix it, but it also checks out the recorded commit, which
+# could throw away uncommitted submodule work -- too blunt for a rename.
+#
+# Only one path component changed, so the depth of a relative core.worktree is
+# still right: swapping the first /<old>/ for /<new>/ is the whole repair. The
+# find covers nested submodules too.
+repair_submodules() {
+  local wt=$1 old=$2 new=$3 gitdir cfg val
+  # Held in variables so neither half of the substitution needs a backslash: a
+  # backslash is literal in the replacement, and escaping there silently wrote
+  # "ws\/newname\/alpha" into the config.
+  local from="/$old/" to="/$new/"
+  gitdir=$(git -C "$wt" rev-parse --absolute-git-dir 2>/dev/null) || return 0
+  [ -d "$gitdir/modules" ] || return 0
+  while IFS= read -r cfg; do
+    val=$(git config -f "$cfg" core.worktree 2>/dev/null) || continue
+    case "$val" in
+      *"$from"*) git config -f "$cfg" core.worktree "${val/$from/$to}" ;;
+    esac
+  done < <(find "$gitdir/modules" -name config -type f 2>/dev/null)
 }
 
 # The workspace name for the directory we're standing in, if any.
@@ -152,7 +184,11 @@ candidate_repos() {
 cmd_new() {
   local ws=${1:-} && shift || true
   [ -n "$ws" ] || die "usage: ws new <name> [repo...]"
-  [ -d "$WS_ROOT/$ws" ] && die "workspace $ws already exists ($WS_ROOT/$ws)"
+  # An empty dir is fine: `bay` pre-creates one so it can open the session
+  # while the worktrees are still being added.
+  if [ -d "$WS_ROOT/$ws" ] && [ -n "$(ls -A "$WS_ROOT/$ws" 2>/dev/null)" ]; then
+    die "workspace $ws already exists ($WS_ROOT/$ws)"
+  fi
 
   local repos=("$@")
   if [ ${#repos[@]} -eq 0 ]; then
@@ -169,6 +205,15 @@ cmd_new() {
     add_repo "$ws" "$repo"
   done
   log "workspace ready: $WS_ROOT/$ws (${repos[*]})"
+
+  # Hand off to the session manager, if it's installed. It completes the
+  # window layout now that the worktrees exist.
+  local bay_bin
+  bay_bin="$(cd "$(dirname "$0")" && pwd)/bay"
+  [ -x "$bay_bin" ] || bay_bin=$(command -v bay || true)
+  if [ "${WS_OPEN_SESSION:-1}" = "1" ] && [ -n "$bay_bin" ]; then
+    "$bay_bin" open "$ws" || true
+  fi
 }
 
 cmd_add() {
@@ -187,6 +232,34 @@ cmd_add() {
   for repo in "${repos[@]}"; do
     add_repo "$ws" "$repo"
   done
+}
+
+cmd_rename() {
+  local old=${1:-} new=${2:-}
+  [ -n "$old" ] && [ -n "$new" ] || die "usage: ws rename <old> <new>"
+  case "$new" in
+    *[!a-zA-Z0-9._-]*) die "use letters, digits, dot, dash, underscore only" ;;
+  esac
+  [ "$old" = "$new" ] && return 0
+  [ -d "$WS_ROOT/$old" ] || die "no workspace $old"
+  [ -e "$WS_ROOT/$new" ] && die "$WS_ROOT/$new already exists"
+
+  # One directory rename, then re-link. `git worktree move` is not an option:
+  # it refuses outright on any worktree containing submodules.
+  mv "$WS_ROOT/$old" "$WS_ROOT/$new"
+
+  local wt repo
+  for wt in "$WS_ROOT/$new"/*/; do
+    [ -e "$wt/.git" ] || continue
+    repo=$(basename "$wt")
+    if git -C "$wt" worktree repair >/dev/null 2>&1; then
+      log "$repo: worktree re-linked"
+    else
+      warn "$repo: worktree repair failed — run 'git -C $wt worktree repair'"
+    fi
+    repair_submodules "$wt" "$old" "$new"
+  done
+  log "workspace $old -> $new ($WS_ROOT/$new)"
 }
 
 cmd_done() {
@@ -263,8 +336,11 @@ cmd_list() {
 case "${1:-help}" in
   new) shift; cmd_new "$@" ;;
   add) shift; cmd_add "$@" ;;
+  rename | mv) shift; cmd_rename "$@" ;;
   done) shift; cmd_done "$@" ;;
   list | ls) shift; cmd_list "$@" ;;
-  help | -h | --help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//' ;;
+  repos) shift; candidate_repos ;; # used by `bay` for its repo picker
+  # The comment block at the top, however long it grows.
+  help | -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0" ;;
   *) die "unknown command: $1 (try: ws help)" ;;
 esac
