@@ -60,3 +60,15 @@ BAY_SPIN_INTERVAL=0.2
 
 # Frames after which a hub left open stops ticking, so it cannot spin forever.
 BAY_SPIN_CAP=900
+
+# --- preview extras -----------------------------------------------------------
+# The preview reads cache files only. `bay --refresh` fills them, spawned
+# detached when the hub opens, so nothing here can ever slow a render: the
+# git status of a monorepo is ~185ms and a `gh` PR lookup ~760ms. Worst case
+# the preview shows last time's answer.
+
+# Where those cache files live.
+BAY_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/bay"
+
+# Seconds a PR lookup stays fresh. Local git facts use a fixed 60s.
+BAY_PR_TTL=600

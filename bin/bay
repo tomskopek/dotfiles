@@ -11,13 +11,14 @@
 #                          C-d done · C-n / C-p move down / up · C-r reload
 #   bay open <name>  create or complete the session, then switch to it
 #   bay kill <name>  kill the session, keep the files
-#   bay rename <old> <new>   rename the workspace, the session and its shells
+#   bay rename <old> <new>   rename a plain session (a workspace: see ws rename)
 #
-# The hub is a switcher, so it behaves like one. Live sessions are listed in
-# the order you last visited them and the session you are in is named in the
-# header rather than listed, which puts the session you most likely want on
-# row one with the cursor already on it. Nothing an agent does reorders a row:
-# what it is doing shows in the mark, from `bay-hook`.
+# The hub is a switcher, so it behaves like one. The session you are in is
+# pinned on top, marked ◉ and set apart by a rule, and the live sessions
+# below it come in the order you last visited them. The cursor starts on the
+# first of those, the session you most likely want; up twice reaches your own
+# row, to rename, kill or tear it down without leaving. Nothing an agent does
+# reorders a row: what it is doing shows in the mark, from `bay-hook`.
 #
 #   🔔 blocked on you   ✅ finished   ◐◓◑◒ working   ● idle   ○ no session
 #
@@ -66,6 +67,12 @@ BAY_SPIN_FRAMES="${BAY_SPIN_FRAMES:-◐  |◓  |◑  |◒  }"
 BAY_SPIN_INTERVAL="${BAY_SPIN_INTERVAL:-0.2}"
 BAY_SPIN_CAP="${BAY_SPIN_CAP:-900}"
 
+# Preview cache. Nothing in the preview ever reaches the network: `bay
+# --refresh` fills these in the background when the hub opens, and the preview
+# only reads them. Seconds a PR lookup stays fresh.
+BAY_CACHE_DIR="${BAY_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/bay}"
+BAY_PR_TTL="${BAY_PR_TTL:-600}"
+
 die() { printf '\033[1;31m[bay]\033[0m %s\n' "$*" >&2; exit 1; }
 
 printf -v TAB '\t'
@@ -103,6 +110,60 @@ branch_of() {
     'ref: refs/heads/'*) REPLY=${line#ref: refs/heads/} ;;
     *) REPLY=${line:0:7} ;;
   esac
+}
+
+# The git dir a repo shares with its worktrees, where Graphite keeps its
+# files. A worktree's .git is one line: "gitdir: <common>/worktrees/<x>".
+# Sets REPLY, empty when there is no git dir.
+common_dir_of() {
+  local g=$1/.git line
+  REPLY=""
+  if [ -d "$g" ]; then REPLY=$g; return 0; fi
+  [ -f "$g" ] || return 0
+  read -r line < "$g" 2>/dev/null || return 0
+  line=${line#gitdir: }
+  case $line in */worktrees/*) REPLY=${line%/worktrees/*} ;; *) REPLY=$line ;; esac
+}
+
+# Where a branch sits in its Graphite stack, as "k/n": k-th above the trunk
+# in a stack n deep, n following the longest chain below it. Empty when
+# Graphite does not track the branch or the stack is a single branch. gt 1.8
+# keeps its metadata in a SQLite file in the common git dir; this is two
+# recursive queries against it, read-only, so a gt running at the same time
+# is left alone. Background use only: sqlite3 is a process. Sets REPLY.
+stack_of() {
+  local wt=$1 branch=$2 common db trunk=main cfg out up down b t
+  REPLY=""
+  command -v sqlite3 >/dev/null 2>&1 || return 0
+  common_dir_of "$wt"; common=$REPLY
+  REPLY=""
+  db="$common/.graphite_metadata.db"
+  [ -f "$db" ] || return 0
+  if [ -f "$common/.graphite_repo_config" ]; then
+    cfg=$(<"$common/.graphite_repo_config")
+    case $cfg in
+      *'"trunk"'*) trunk=${cfg#*\"trunk\"}; trunk=${trunk#*\"}; trunk=${trunk%%\"*} ;;
+    esac
+  fi
+  # The trunk has children but is nobody's stack.
+  [ "$branch" = "$trunk" ] && return 0
+  b=${branch//\'/\'\'} t=${trunk//\'/\'\'}
+  out=$(sqlite3 -readonly "$db" "
+WITH RECURSIVE up(b, d) AS (
+  SELECT branch_name, 1 FROM branch_metadata WHERE branch_name = '$b'
+  UNION ALL
+  SELECT m.parent_branch_name, up.d + 1 FROM branch_metadata m JOIN up ON m.branch_name = up.b
+  WHERE m.parent_branch_name IS NOT NULL AND m.parent_branch_name != '' AND m.parent_branch_name != '$t' AND up.d < 50
+) SELECT max(d) FROM up;
+WITH RECURSIVE down(b, d) AS (
+  SELECT '$b', 0
+  UNION ALL
+  SELECT m.branch_name, down.d + 1 FROM branch_metadata m JOIN down ON m.parent_branch_name = down.b WHERE down.d < 50
+) SELECT max(d) FROM down;" 2>/dev/null) || return 0
+  up=${out%%$'\n'*}; down=${out#*$'\n'}
+  [ -n "$up" ] && [ "$down" != "$out" ] || return 0
+  [ $((up + down)) -ge 2 ] || return 0
+  REPLY="$up/$((up + down))"
 }
 
 # Plain clones offered in the hub: the allowlist if there is one, otherwise
@@ -178,6 +239,39 @@ human_idle() {
 # `bay-hook` records what each agent is doing in a tmux window option. Bells
 # are no use here: Claude Code only rings one on some notification channels,
 # and tmux drops the flag as soon as any client looks at the window.
+# --- preview data ------------------------------------------------------------
+
+# Flat cache files, keyed by a name safe for a filename. Sets REPLY.
+cache_key() { REPLY=${1//[^a-zA-Z0-9._-]/_}; }
+
+mtime_of() { stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0; }
+
+# -e, not -f: this is also used on the refresh lock, which is a directory, and
+# testing -f made every concurrent refresh think the lock was stale and steal it.
+cache_fresh() {
+  [ -e "$1" ] || return 1
+  [ $(( $(date +%s) - $(mtime_of "$1") )) -lt "$2" ]
+}
+
+# One cached line, or empty. Sets REPLY.
+cache_read() {
+  REPLY=""
+  [ -f "$1" ] || return 0
+  IFS= read -r REPLY < "$1" 2>/dev/null || REPLY=""
+}
+
+# Where main diverged. Sets REPLY, empty when there is no main to compare to.
+merge_base_of() {
+  local wt=$1 ref
+  REPLY=""
+  for ref in origin/main origin/master main master; do
+    if REPLY=$(git -C "$wt" merge-base HEAD "$ref" 2>/dev/null) && [ -n "$REPLY" ]; then
+      return 0
+    fi
+  done
+  REPLY=""
+}
+
 # One frame of the working spinner, by index. Sets REPLY.
 spin_mark() {
   local i=$1 n
@@ -195,6 +289,11 @@ any_busy() {
   case "$(tmux list-windows -a -F '#{@bay_state}' 2>/dev/null)" in
     *busy*) return 0 ;;
   esac
+  # A tear-down under way counts too: its row should leave when it is done.
+  local f
+  for f in "$BAY_CACHE_DIR"/done/*.run; do
+    [ -e "$f" ] && return 0
+  done
   return 1
 }
 
@@ -273,10 +372,38 @@ resync_sh_window() {
   tmux send-keys -t "=$name:2" " cd '$root'" C-m
 }
 
+# The session you are in. A popup has no TMUX_PANE, so a tmux command run
+# inside one that asks for "the current session" gets tmux's best guess:
+# the attached session with the latest activity, which an agent printing
+# output in another window changes under you. The key binding in tmux.conf
+# therefore hands the popup its origin in BAY_HERE and BAY_CLIENT, expanded
+# where the key was pressed. In a pane, TMUX_PANE pins it down instead.
+# Sets REPLY, empty outside tmux.
+here_session() {
+  REPLY=""
+  [ -n "${TMUX:-}" ] || return 0
+  if [ -n "${BAY_HERE:-}" ]; then
+    REPLY=$BAY_HERE
+  elif [ -n "${TMUX_PANE:-}" ]; then
+    REPLY=$(tmux display-message -p -t "$TMUX_PANE" '#{session_name}' 2>/dev/null) || REPLY=""
+  else
+    REPLY=$(tmux display-message -p '#{session_name}' 2>/dev/null) || REPLY=""
+  fi
+}
+
+# The client to move: the one named by the binding, else tmux's guess.
+client_args() {
+  REPLY=""
+  [ -n "${BAY_CLIENT:-}" ] && REPLY="-c $BAY_CLIENT"
+  return 0
+}
+
 focus() {
   local name=$1
   if [ -n "${TMUX:-}" ]; then
-    tmux switch-client -t "=$name"
+    client_args
+    # shellcheck disable=SC2086
+    tmux switch-client $REPLY -t "=$name"
   else
     tmux attach-session -t "=$name"
   fi
@@ -292,7 +419,15 @@ cmd_open() {
 
   if has_session "$name"; then
     ensure_layout "$name" "$root"
-    resync_sh_window "$name" "$root"
+    # While cmd_new's build runs (@bay_building), the sh pane is busy with
+    # `ws new` and cds on its own once that returns. Keys sent now would only
+    # queue up for the shell that follows. `ws new` calls here last, so the
+    # mark is cleared here too.
+    if [ "$(tmux show-options -wv -t "=$name:2" @bay_building 2>/dev/null)" = on ]; then
+      tmux set-option -wu -t "=$name:2" @bay_building 2>/dev/null || true
+    else
+      resync_sh_window "$name" "$root"
+    fi
   else
     create_session "$name" "$root"
     ensure_layout "$name" "$root"
@@ -309,75 +444,70 @@ cmd_open() {
   focus "$name"
 }
 
+# Killing the session a client is looking at detaches that client, popup and
+# all (tmux's detach-on-destroy). Step over to the last session first, so
+# killing or tearing down the one you are in lands you back where you were.
+leave_if_current() {
+  here_session
+  [ -n "$REPLY" ] && [ "$REPLY" = "$1" ] || return 0
+  client_args
+  # shellcheck disable=SC2086
+  tmux switch-client $REPLY -l 2>/dev/null || tmux switch-client $REPLY -n 2>/dev/null || true
+}
+
 cmd_kill() {
   local name=${1:-}
   [ -n "$name" ] || die "usage: bay kill <name>"
   has_session "$name" || return 0
+  leave_if_current "$name"
   tmux kill-session -t "=$name"
 }
 
-# Rename a feature: the workspace directory and its worktree registrations
-# (delegated to `ws`), the tmux session, and the shells sitting inside it.
+# Rename a plain tmux session. A workspace is never renamed from here. Its
+# name is its directory under $WS_ROOT, so renaming one means moving that
+# directory out from under every shell, editor and agent in the session. The
+# processes survive -- the inode does not change -- but anything keyed on the
+# path does not follow: Claude Code files its sessions by project path, so
+# the history of the old path is stranded and --resume in the new one finds
+# nothing, and submodule gitdir pointers need repair. That is `ws rename`,
+# typed on purpose in a shell, not a hub keystroke.
+#
+# Reasons a name cannot be renamed from here. die()s with the first one.
+rename_source_check() {
+  local old=$1
+  [ -d "$WS_ROOT/$old" ] && die "$old is a workspace: renaming it moves $WS_ROOT/$old. If that is what you want, run  ws rename $old <new>  in a shell"
+  is_repo "$old" && die "$old is a plain clone in $DEV_ROOT, not a session"
+  has_session "$old" || die "no session named $old"
+}
+
 cmd_rename() {
   local old=${1:-} new=${2:-}
   [ -n "$old" ] && [ -n "$new" ] || die "usage: bay rename <old> <new>"
   [ "$old" = "$new" ] && return 0
+  rename_source_check "$old"
   case "$new" in
     *[!a-zA-Z0-9._-]*) die "use letters, digits, dot, dash, underscore only" ;;
   esac
   has_session "$new" && die "session $new already exists"
   [ -e "$WS_ROOT/$new" ] && die "workspace $new already exists"
   is_repo "$new" && die "$new is already a repo in $DEV_ROOT"
-
-  # A plain clone's name is the clone's own directory. Renaming that is a
-  # different job than renaming a feature, so say so instead of guessing.
-  if [ ! -d "$WS_ROOT/$old" ] && is_repo "$old"; then
-    die "$old is a plain clone in $DEV_ROOT, not a workspace"
-  fi
-  [ -d "$WS_ROOT/$old" ] || has_session "$old" || die "no workspace or session named $old"
-
-  if [ -d "$WS_ROOT/$old" ]; then
-    [ -n "$WS_BIN" ] || die "cannot find the ws script"
-    "$WS_BIN" rename "$old" "$new" || die "ws rename failed, session left as $old"
-  fi
-
-  has_session "$old" || return 0
   tmux rename-session -t "=$old" "$new"
-
-  # The directory moved out from under every shell in the session. They keep
-  # working -- a rename leaves the inode alone -- but $PWD is now a path that
-  # no longer exists, which is what the prompt and the status line print. Send
-  # a cd to the shells, and only to the shells: the same keystrokes typed into
-  # an editor or an agent would land in its input.
-  local pane cmd path target old_root="$WS_ROOT/$old" new_root="$WS_ROOT/$new"
-  [ -d "$new_root" ] || return 0
-  while IFS='|' read -r pane cmd path; do
-    # tmux reads a pane's cwd from the process, not from a stored string, so by
-    # now it already reports the new path -- matching only on the old one found
-    # nothing. Accept either and let the shell catch up to what tmux says.
-    case "$path" in
-      "$new_root" | "$new_root"/*) target=$path ;;
-      "$old_root" | "$old_root"/*) target="$new_root${path#"$old_root"}" ;;
-      *) continue ;;
-    esac
-    case "$cmd" in sh | bash | zsh | fish | dash | ksh) ;; *) continue ;; esac
-    # Leading space keeps this out of shell history.
-    tmux send-keys -t "$pane" " cd '$target'" C-m
-  done < <(tmux list-panes -s -t "=$new" -F '#{pane_id}|#{pane_current_command}|#{pane_current_path}' 2>/dev/null)
 }
 
-# Ask for the new name, from the hub. Runs cmd_rename in a subshell so that a
-# die() leaves us alive to hold the message on screen.
+# Ask for the new name, from the hub. Refuse before asking, not after, and
+# run the checks in a subshell so that a die() leaves us alive to hold the
+# message on screen: fzf redraws the hub the moment execute() returns.
 cmd_rename_prompt() {
   local old=${1:-} new
   [ -n "$old" ] || return 0
-  printf 'rename %s to: ' "$old"
-  read -r new || return 0
-  [ -n "$new" ] || return 0
-  if ! ( cmd_rename "$old" "$new" ); then
-    printf '\npress enter to continue '
-    read -r _ || true
+  if ( rename_source_check "$old" ); then
+    printf 'rename %s to: ' "$old"
+    read -r new || return 0
+    [ -n "$new" ] || return 0
+    ( cmd_rename "$old" "$new" ) && return 0
   fi
+  printf '\npress enter to continue '
+  read -r _ || true
 }
 
 # One row per feature: the name, a tab, then a pre-padded display string.
@@ -386,43 +516,109 @@ cmd_rename_prompt() {
 #
 # $2 is pre-padded to three display cells by the caller, not by printf: printf
 # counts bytes, and 🔔/✅ are two cells wide where ●/○ are one.
+# $7 is the row's style: empty for a live session, "dim" for one with no
+# session yet, "here" for the session you are in.
 row() {
-  local name=$1 mark=$2 word=$3 where=$4 age=$5 dim=${6:-} disp=$1
+  local name=$1 mark=$2 word=$3 pr=$4 where=$5 age=$6 style=${7:-} disp=$1 pad
   [ ${#disp} -gt 18 ] && disp="${disp:0:17}…"
   [ ${#where} -gt 18 ] && where="${where:0:17}…"
-  if [ -n "$dim" ]; then
-    printf -v REPLY '%s\t\033[2m%s%-18s %-9s %-18s %4s\033[0m' \
-      "$name" "$mark" "$disp" "$word" "$where" "$age"
-  else
-    printf -v REPLY '%s\t%s%-18s %-9s %-18s %4s' \
-      "$name" "$mark" "$disp" "$word" "$where" "$age"
-  fi
+  # Padded by hand: printf counts bytes, and the PR cell has glyphs in it.
+  printf -v pad '%*s' $((15 - ${#pr})) ''
+  case $style in
+    dim)
+      printf -v REPLY '%s\t\033[2m%s%-18s %-9s %s%s %-18s %4s\033[0m' \
+        "$name" "$mark" "$disp" "$word" "$pr" "$pad" "$where" "$age" ;;
+    here)
+      # Bold magenta, the way the status bar names the session you are in. No
+      # background: fzf paints its cursor line with one, and a second bar
+      # read as a second cursor.
+      [ -n "$pr" ] && pr=$'\033['"${PR_COL:-36}m$pr"$'\033[39m'
+      printf -v REPLY '%s\t\033[1;35m%s%-18s\033[0m %-9s %s%s %-18s %4s' \
+        "$name" "$mark" "$disp" "$word" "$pr" "$pad" "$where" "$age" ;;
+    *)
+      [ -n "$pr" ] && pr=$'\033['"${PR_COL:-36}m$pr"$'\033[39m'
+      printf -v REPLY '%s\t%s%-18s %-9s %s%s %-18s %4s' \
+        "$name" "$mark" "$disp" "$word" "$pr" "$pad" "$where" "$age" ;;
+  esac
 }
 
-# The fzf header: where you are, and what your own agent is up to. The session
-# you are in has no row of its own on purpose -- a switcher whose first row is
-# the thing you are already looking at makes every switch start with a
-# keystroke that goes nowhere, which is why alt-tab and Ctrl+Tab skip it too.
-cmd_header() {
-  local out name wins w state since r best="" bestat=0 bestr=0 now
-  # Outside tmux there is no session you are in, so there is nothing to name
-  # and cmd_rows leaves every session in the list.
-  out=""
-  [ -n "${TMUX:-}" ] && { out=$(tmux display-message -p '#{session_name}|#{W:#{@bay_state}:#{@bay_since} }' 2>/dev/null) || out=""; }
-  name=${out%%|*}
-  wins=${out#*|}
-  for w in $wins; do
-    state=${w%%:*}; since=${w#*:}
-    case $state in wait) r=3 ;; done) r=2 ;; busy) r=1 ;; *) continue ;; esac
-    if [ "$r" -gt "$bestr" ]; then bestr=$r; best=$state; bestat=${since:-0}; fi
+# The rule under the pinned row. Its name field is empty, so enter and the
+# row keys fall through to nothing.
+ROW_W=71
+separator() {
+  printf -v REPLY '%*s' "$ROW_W" ''
+  REPLY=${REPLY// /─}
+  REPLY=$'\t\033[2m'"$REPLY"$'\033[0m'
+}
+
+# The PR column for a feature: its open PR, how the checks stand, and where
+# the branch sits in its Graphite stack, e.g. "#15327 ✓ ⧉2/4". Read from
+# the cache files `bay --refresh` fills in the background, with builtins
+# only: rows are rebuilt on every spinner frame. A workspace with several
+# PRs shows the first and "+1". Sets REPLY, and PR_COL to an ANSI colour.
+PR_COL=""
+pr_cell() {
+  local name=$1 wt branch f line num="" draft="" status="" fails="" stack="" more=0 cell=""
+  REPLY="" PR_COL=""
+  if [ -d "$WS_ROOT/$name" ]; then set -- "$WS_ROOT/$name"/*/; else set -- "$DEV_ROOT/$name/"; fi
+  for wt in "$@"; do
+    wt=${wt%/}
+    [ -e "$wt/.git" ] || continue
+    branch_of "$wt"; branch=$REPLY
+    [ -n "$branch" ] || continue
+    cache_key "${wt##*/}-$branch"
+    f="$BAY_CACHE_DIR/pr/$REPLY"
+    if [ -s "$f" ]; then
+      if [ -n "$num" ]; then
+        more=$((more + 1))
+      else
+        while IFS= read -r line; do
+          case $line in
+            "PR #"*)
+              num=${line#PR #}; num=${num%% *}
+              case $line in
+                *"(draft)"*) draft=d ;;
+                *"(merged)"*) status=merged ;;
+                *"(closed)"*) status=closed ;;
+              esac ;;
+            "checks: "*failing*) status=fail; fails=${line#checks: }; fails=${fails%% *} ;;
+            "checks: "*running*) [ -z "$status" ] && status=run ;;
+            "checks: passing") [ -z "$status" ] && status=ok ;;
+            "conflicts"*) [ "$status" != fail ] && status=conflict ;;
+          esac
+        done < "$f"
+      fi
+    fi
+    if [ -z "$stack" ]; then
+      f="$BAY_CACHE_DIR/git/$REPLY"
+      [ -f "$f" ] && while IFS= read -r line; do
+        case $line in "stack "*) stack=${line#stack } ;; esac
+      done < "$f"
+    fi
   done
-  if [ -n "$name" ] && [ -n "$best" ]; then
-    now=$(date +%s)
-    state_label "$best" "$((now - bestat))" ''
-    printf 'in %s   %s\n' "$name" "$REPLY"
-  elif [ -n "$name" ]; then
-    printf 'in %s\n' "$name"
+  REPLY=""
+  [ -n "$num" ] || [ -n "$stack" ] || return 0
+  PR_COL=36
+  if [ -n "$num" ]; then
+    cell="#$num$draft"
+    case $status in
+      ok) cell="$cell ✓"; PR_COL=32 ;;
+      fail) cell="$cell ✗$fails"; PR_COL=31 ;;
+      run) cell="$cell ◌"; PR_COL=33 ;;
+      conflict) cell="$cell !"; PR_COL=31 ;;
+      merged) cell="$cell merged"; PR_COL=35 ;;
+      closed) cell="$cell closed"; PR_COL=90 ;;
+    esac
+    [ "$more" -gt 0 ] && cell="$cell +$more"
   fi
+  # The stack matters while the PR is live; once it is merged the word wins
+  # the room.
+  case $status in merged | closed) ;; *) [ -n "$stack" ] && cell="${cell:+$cell }⧉$stack" ;; esac
+  [ ${#cell} -gt 15 ] && cell=${cell:0:15}
+  REPLY=$cell
+}
+
+cmd_header() {
   printf 'enter switch · C-t new · C-e rename · C-x kill · C-d done · C-r reload'
 }
 
@@ -430,15 +626,16 @@ cmd_rows() {
   local frame=${1:-0}
   local now here="" dump live="" names="|"
   local tag a b c d name last act wins mark word where age state tmp r
-  local wsess="" wrank=0 wstate="" wsince="" states=" " sessions="" list dir
+  local wsess="" wrank=0 wstate="" wsince="" states=" " sessions="" list dir here_row="" out=""
   now=$(date +%s)
+  here_session; here=$REPLY
 
   # One tmux round trip for the lot: the session you are in, every session,
   # and every window bay has flagged. A tmux command is a ~9ms round trip to
   # the server, so the count of them is what the hub's latency is made of.
   # #{S:...} loops over sessions and #{W:...} over that session's windows, so
   # each W line below belongs to the S line above it.
-  dump=$(tmux display-message -p 'H|#{session_name}#{S:
+  dump=$(tmux display-message -p '#{S:
 S|#{session_name}|#{session_last_attached}|#{session_activity}|#{session_windows}#{W:
 W|#{@bay_state}|#{@bay_since}}}' 2>/dev/null) || dump=""
 
@@ -446,7 +643,6 @@ W|#{@bay_state}|#{@bay_since}}}' 2>/dev/null) || dump=""
   # name out of one string. Bash 3.2 has no associative arrays.
   while IFS='|' read -r tag a b c d; do
     case $tag in
-      H) [ -n "${TMUX:-}" ] && here=$a ;;
       S)
         [ -n "$wsess" ] && states="$states$wsess=$wrank:$wstate:$wsince "
         wsess=$a; wrank=0; wstate=""; wsince=""
@@ -470,7 +666,6 @@ EOF
   # what made rows shuffle between openings.
   while IFS='|' read -r name last act wins; do
     [ -n "$name" ] || continue
-    [ "$name" = "$here" ] && continue
 
     if [ -d "$WS_ROOT/$name" ]; then
       repos_of "$name"
@@ -495,7 +690,13 @@ EOF
       # The spinner says "working" better than the word did, so the word
       # column stays empty and the row keeps one signal, not two.
       busy) spin_mark "$frame"; mark=$REPLY; word='' ;;
-      *)    mark='●  '; word='' ;;
+      *)    mark='●  '; word=''; [ "$name" = "$here" ] && mark='◉  ' ;;
+    esac
+    # A tear-down in flight, or one that failed, outranks what the agent did.
+    teardown_state "$name"
+    case $REPLY in
+      running) spin_mark "$frame"; mark=$REPLY; word='removing' ;;
+      failed) mark=$'\033[31m✗\033[39m  '; word='failed' ;;
     esac
 
     # Time since you were last in it, which is also what the list is sorted
@@ -506,13 +707,30 @@ EOF
       age='-'
     fi
 
-    row "$name" "$mark" "$word" "$where" "$age"
+    pr_cell "$name"
+    if [ "$name" = "$here" ]; then
+      row "$name" "$mark" "$word" "$REPLY" "$where" "now" here
+      here_row=$REPLY
+      continue
+    fi
+    row "$name" "$mark" "$word" "$REPLY" "$where" "$age"
     live="$live$last|$REPLY
 "
   done <<EOF
 $sessions
 EOF
-  [ -n "$live" ] && printf '%s' "$live" | sort -t'|' -k1,1nr | cut -d'|' -f2-
+  # You, pinned on top and set apart, then everyone else by last visit.
+  # Everything is gathered in $out and written once at the end: fzf reads a
+  # reload as a stream and clamps the cursor to however many rows it has so
+  # far, so two rows arriving ahead of the rest dragged it onto the rule.
+  if [ -n "$here_row" ]; then
+    separator
+    out="$here_row
+$REPLY
+"
+  fi
+  [ -n "$live" ] && out="$out$(printf '%s' "$live" | sort -t'|' -k1,1nr | cut -d'|' -f2-)
+"
 
   # Then what has no session yet: dimmed and always last, so the live block
   # above it is a fixed target for the eye.
@@ -521,9 +739,17 @@ EOF
       [ -d "$dir" ] || continue
       dir=${dir%/}; name=${dir##*/}
       case "$names" in *"|$name|"*) continue ;; esac
-      repos_of "$name"
-      row "$name" '○  ' '' "$REPLY" '' dim
-      printf '%s\n' "$REPLY"
+      repos_of "$name"; where=$REPLY
+      teardown_state "$name"
+      case $REPLY in
+        running) spin_mark "$frame"; mark=$REPLY; word='removing' ;;
+        failed) mark='✗  '; word='failed' ;;
+        *) mark='○  '; word='' ;;
+      esac
+      pr_cell "$name"
+      row "$name" "$mark" "$word" "$REPLY" "$where" '' dim
+      out="$out$REPLY
+"
     done
   fi
 
@@ -531,10 +757,329 @@ EOF
   for name in $list; do
     case "$names" in *"|$name|"*) continue ;; esac
     [ -d "$WS_ROOT/$name" ] && continue
-    branch_of "$DEV_ROOT/$name"
-    row "$name" '○  ' '' "$REPLY" '' dim
-    printf '%s\n' "$REPLY"
+    branch_of "$DEV_ROOT/$name"; where=$REPLY
+    pr_cell "$name"
+    row "$name" '○  ' '' "$REPLY" "$where" '' dim
+    out="$out$REPLY
+"
   done
+  printf '%s' "$out"
+}
+
+# --- background refresh ------------------------------------------------------
+
+# The Claude Code transcript directory for a workspace, derived the way Claude
+# Code derives it: the session's working directory with every / turned into -.
+transcript_dir() {
+  local root
+  REPLY=""
+  root=$(root_for "$1" 2>/dev/null) || return 0
+  REPLY="$HOME/.claude/projects/${root//\//-}"
+}
+
+# The first thing you actually asked in this workspace. Sets REPLY.
+#
+# Oldest session, not newest: the newest one is whatever you happened to start
+# in that directory last, which for lora-stacking was "download all the
+# image/caption pairs" -- nothing to do with stacking LoRAs. The oldest is the
+# ask the workspace was created for.
+#
+# Claude names a project directory after its working directory, and over a
+# workspace's life that may have been the workspace root or any repo inside it,
+# so look in all of them and take the earliest transcript that has a real ask.
+first_ask() {
+  local ws=$1 root d p
+  local dirs=()
+  REPLY=""
+  command -v python3 >/dev/null 2>&1 || return 0
+  root=$(root_for "$ws" 2>/dev/null) || root=""
+  for d in "$WS_ROOT/$ws" "$root" "$WS_ROOT/$ws"/*/; do
+    [ -n "$d" ] || continue
+    d=${d%/}
+    p="$HOME/.claude/projects/${d//\//-}"
+    [ -d "$p" ] && dirs+=("$p")
+  done
+  [ ${#dirs[@]} -gt 0 ] || return 0
+  REPLY=$(python3 -c '
+import json, os, sys, glob
+
+files = []
+for d in sys.argv[1:]:
+    for f in glob.glob(os.path.join(d, "*.jsonl")):
+        try: files.append((os.path.getmtime(f), f))
+        except OSError: pass
+files.sort()
+
+def first_ask(path):
+    for line in open(path, errors="replace"):
+        try: d = json.loads(line)
+        except Exception: continue
+        if d.get("type") != "user": continue
+        c = d.get("message", {}).get("content")
+        if isinstance(c, list):
+            c = " ".join(x.get("text", "") for x in c
+                         if isinstance(x, dict) and x.get("type") == "text")
+        if not isinstance(c, str): continue
+        c = c.strip()
+        # Pasted-image markers and injected tags are not an ask.
+        while c.startswith("[Image #"):
+            c = c.split("]", 1)[-1].strip()
+        if not c or c.startswith("<") or len(c) < 20: continue
+        return " ".join(c.split())
+    return ""
+
+for _, f in files:
+    a = first_ask(f)
+    if a:
+        print(a[:400]); break
+' "${dirs[@]}" 2>/dev/null) || REPLY=""
+}
+
+# Every repo directory the hub can show a preview for: each workspace's repos,
+# plus the plain clones the hub actually lists. Walking all of DEV_ROOT instead
+# meant a `git status` against 34 repos to serve previews for two of them.
+preview_dirs() {
+  local dir wt name list
+  for dir in "$WS_ROOT"/*/; do
+    [ -d "$dir" ] || continue
+    for wt in "$dir"*/; do
+      [ -e "$wt.git" ] && printf '%s\n' "${wt%/}"
+    done
+  done
+  dev_repos; list=$REPLY
+  for name in $list; do
+    [ -e "$DEV_ROOT/$name/.git" ] && printf '%s\n' "$DEV_ROOT/$name"
+  done
+}
+
+# Dirty state and what has landed on the branch. `git status --porcelain` is
+# ~185ms in the ui monorepo and merge-base plus log another ~85ms, so none of
+# it belongs in a render either -- the preview reads the file this writes.
+refresh_git() {
+  local wt repo branch f base subjects n behind body
+  while IFS= read -r wt; do
+    [ -n "$wt" ] || continue
+    repo=${wt##*/}
+    branch_of "$wt"; branch=$REPLY
+    [ -n "$branch" ] || continue
+    cache_key "$repo-$branch"; f="$BAY_CACHE_DIR/git/$REPLY"
+    cache_fresh "$f" 60 && continue
+
+    body=""
+    # The porcelain output is already in hand, so the file count is free -- and
+    # "3 files" tells you whether there is real work in flight where a bare
+    # *dirty did not.
+    n=$(git --no-optional-locks -C "$wt" status --porcelain 2>/dev/null | grep -c .) || n=0
+    [ "$n" -gt 0 ] && body="dirty $n
+"
+    merge_base_of "$wt"; base=$REPLY
+    if [ -n "$base" ]; then
+      # How far main has moved since we branched, i.e. how overdue a rebase is.
+      behind=$(git -C "$wt" rev-list --count "$base"..origin/main 2>/dev/null) || behind=""
+      [ -n "$behind" ] && [ "$behind" != "0" ] && body="${body}behind $behind
+"
+      subjects=$(git -C "$wt" log --format='%s' "$base"..HEAD 2>/dev/null)
+      if [ -n "$subjects" ]; then
+        n=$(printf '%s\n' "$subjects" | grep -c .)
+        body="${body}ahead $n
+$(printf '%s\n' "$subjects" | head -3)
+"
+      else
+        body="${body}ahead 0
+"
+      fi
+    fi
+    stack_of "$wt" "$branch"
+    [ -n "$REPLY" ] && body="${body}stack $REPLY
+"
+    printf '%s' "$body" > "$f"
+  done < <(preview_dirs)
+}
+
+# owner/name from the remote URL. Parsed locally: `gh repo view` would be
+# another ~500ms round trip per repo to learn something the URL already says.
+repo_slug() {
+  local url name rest owner
+  REPLY=""
+  url=$(git -C "$1" remote get-url origin 2>/dev/null) || return 0
+  url=${url%.git}; url=${url%/}
+  name=${url##*/}
+  rest=${url%/*}
+  owner=${rest##*[:/]}
+  [ -n "$owner" ] && [ -n "$name" ] && REPLY="$owner/$name"
+  return 0
+}
+
+# Unresolved review threads that still apply to the current code. This is the
+# signal bugbot findings arrive on, and REST cannot see it. Sets REPLY.
+review_threads() {
+  local slug=$1 num=$2 out
+  REPLY=""
+  [ -n "$slug" ] && [ -n "$num" ] || return 0
+  out=$(gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){
+    reviewThreads(first:100){nodes{isResolved isOutdated}}}}}' \
+    -F o="${slug%%/*}" -F r="${slug#*/}" -F n="$num" 2>/dev/null) || return 0
+  REPLY=$(printf '%s' "$out" | python3 -c '
+import json, sys
+try:
+    n = json.load(sys.stdin)["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
+except Exception:
+    raise SystemExit
+live = sum(1 for x in n if not x["isResolved"] and not x["isOutdated"])
+if live:
+    print("%d unresolved review thread%s" % (live, "" if live == 1 else "s"))
+' 2>/dev/null) || REPLY=""
+}
+
+# Open PRs, one gh call per branch. ~760ms each, which is exactly why this
+# lives out here and not in the preview.
+refresh_prs() {
+  local wt repo branch f slug sel num state json extra
+  command -v gh >/dev/null 2>&1 || return 0
+  while IFS= read -r wt; do
+    [ -n "$wt" ] || continue
+    repo=${wt##*/}
+    branch_of "$wt"; branch=$REPLY
+    [ -n "$branch" ] || continue
+    cache_key "$repo-$branch"; f="$BAY_CACHE_DIR/pr/$REPLY"
+    cache_fresh "$f" "$BAY_PR_TTL" && continue
+
+    # gh reads the repo from the worktree's remote, so just run it in there.
+    # Every state, so a PR that merged is still news rather than a blank.
+    json=$( (cd "$wt" && gh pr list --head "$branch" --state all --limit 5 \
+              --json number,title,state,isDraft,mergeable,statusCheckRollup) 2>/dev/null ) || json=""
+    # A lookup that failed (network, rate limit, gh itself) is not "no PR".
+    # Keep what we knew; the stale file is retried on the next refresh. Only
+    # an answer of [] means there is nothing to show.
+    [ -n "$json" ] || continue
+    if [ "$json" = "[]" ]; then
+      : > "$f"
+      continue
+    fi
+
+    # The PR that matters for the branch: an open one, else the newest merged,
+    # else the newest closed. gh lists newest first.
+    sel=$(printf '%s' "$json" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+for want in ("OPEN", "MERGED"):
+    for p in d:
+        if p.get("state") == want:
+            print(p["number"], want); raise SystemExit
+if d:
+    print(d[0]["number"], d[0].get("state") or "CLOSED")' 2>/dev/null) || sel=""
+    [ -n "$sel" ] || continue
+    num=${sel%% *}; state=${sel#* }
+    extra=""
+    if [ "$state" = OPEN ]; then
+      repo_slug "$wt"; slug=$REPLY
+      review_threads "$slug" "$num"; extra=$REPLY
+    fi
+
+    # A rollup lists every attempt, so the same check appears once per re-run.
+    # Keeping only the newest attempt per name is what separates a test that
+    # broke from one whose run a later push cancelled -- on one PR here that
+    # was the difference between 6 failures reported and 4 real ones.
+    # Written beside the file and moved into place, so a parse that fails
+    # leaves the old answer rather than a blank.
+    if printf '%s' "$json" | python3 -c '
+import json, sys
+
+num = int(sys.argv[1])
+d = json.load(sys.stdin)
+p = next((x for x in d if x["number"] == num), None)
+if p is None:
+    raise SystemExit(1)
+state = p.get("state") or ""
+tag = ""
+if state == "MERGED":
+    tag = " (merged)"
+elif state == "CLOSED":
+    tag = " (closed)"
+elif p.get("isDraft"):
+    tag = " (draft)"
+print("PR #%d%s  %s" % (p["number"], tag, p.get("title") or ""))
+if state != "OPEN":
+    raise SystemExit
+
+latest = {}
+for x in p.get("statusCheckRollup") or []:
+    k = x.get("name") or x.get("context") or "?"
+    if k not in latest or str(x.get("startedAt") or "") > str(latest[k].get("startedAt") or ""):
+        latest[k] = x
+
+def verdict(x):
+    c = x.get("conclusion") or ""
+    st = x.get("status") or x.get("state") or ""
+    if st in ("IN_PROGRESS", "QUEUED", "PENDING") or (not c and st != "COMPLETED"):
+        return "running"
+    if c in ("SUCCESS", "NEUTRAL", "SKIPPED"):
+        return "ok"
+    if c in ("FAILURE", "ERROR", "TIMED_OUT", "ACTION_REQUIRED", "STARTUP_FAILURE"):
+        return "fail"
+    return "other"
+
+fails = sorted(k for k, x in latest.items() if verdict(x) == "fail")
+running = sum(1 for x in latest.values() if verdict(x) == "running")
+if fails:
+    line = "checks: %d failing" % len(fails)
+    if running:
+        line += ", %d running" % running
+    print(line + "  " + ", ".join(fails[:3])[:70])
+elif running:
+    print("checks: %d running" % running)
+elif latest:
+    print("checks: passing")
+
+if p.get("mergeable") == "CONFLICTING":
+    print("conflicts with main")
+
+extra = sys.argv[2] if len(sys.argv) > 2 else ""
+if extra:
+    print(extra)
+' "$num" "$extra" > "$f.tmp" 2>/dev/null; then
+      mv -f "$f.tmp" "$f"
+    else
+      rm -f "$f.tmp"
+    fi
+  done < <(preview_dirs)
+}
+
+refresh_ask() {
+  local dir ws skey ask
+  mkdir -p "$BAY_CACHE_DIR/ask"
+  for dir in "$WS_ROOT"/*/; do
+    [ -d "$dir" ] || continue
+    ws=${dir%/}; ws=${ws##*/}
+    cache_key "$ws"; skey=$REPLY
+    # Reading it costs a python3 per workspace, so don't do that on every
+    # single hub open.
+    cache_fresh "$BAY_CACHE_DIR/ask/$skey.stamp" 300 && continue
+    : > "$BAY_CACHE_DIR/ask/$skey.stamp"
+    first_ask "$ws"; ask=$REPLY
+    [ -n "$ask" ] && printf '%s\n' "${ask:0:150}" > "$BAY_CACHE_DIR/ask/$skey"
+  done
+}
+
+# Global, not local: the EXIT trap below runs after cmd_refresh has returned,
+# where a local would be out of scope and set -u would abort the cleanup.
+BAY_LOCK=""
+cmd_refresh() {
+  local lock="$BAY_CACHE_DIR/refresh.lock"
+  BAY_LOCK=$lock
+  mkdir -p "$BAY_CACHE_DIR/pr" "$BAY_CACHE_DIR/git" "$BAY_CACHE_DIR/ask"
+  # One refresh at a time. A lock older than ten minutes was left by something
+  # that died, so take it.
+  if ! mkdir "$lock" 2>/dev/null; then
+    cache_fresh "$lock" 600 && return 0
+    rmdir "$lock" 2>/dev/null || true
+    mkdir "$lock" 2>/dev/null || return 0
+  fi
+  trap 'rmdir "$BAY_LOCK" 2>/dev/null || true' EXIT
+  [ -d "$WS_ROOT" ] || return 0
+  refresh_git
+  refresh_prs
+  refresh_ask
 }
 
 # Drive the working spinner. fzf has no timer event, so the frames come from
@@ -550,15 +1095,68 @@ cmd_tick() {
   while [ "$n" -lt "$BAY_SPIN_CAP" ]; do
     # Nothing is working, so there is nothing to redraw. Still talk to fzf,
     # because a failed POST is how we learn the hub has closed.
-    if any_busy; then act="reload($BAY_SELF --rows $n)"; else act=ignore; fi
+    # reload-sync: the old rows stay up until the new ones are all in, so the
+    # cursor never sees a half-loaded list.
+    if any_busy; then act="reload-sync($BAY_SELF --rows $n)"; else act=ignore; fi
     curl -s -XPOST "http://localhost:$port" -d "$act" >/dev/null 2>&1 || return 0
     n=$((n + 1))
     sleep "$BAY_SPIN_INTERVAL"
   done
 }
 
+# One repo's block: branch, dirty, its open PR, and what has landed on the
+# branch. The PR comes from cache; everything else is local git.
+preview_repo() {
+  local wt=$1 repo branch f line rest="" ahead="" dirty="" behind="" stack=""
+  repo=${wt%/}; repo=${repo##*/}
+  # Free: read out of .git, no fork.
+  branch_of "${wt%/}"; branch=$REPLY
+
+  cache_key "$repo-$branch"; f="$BAY_CACHE_DIR/git/$REPLY"
+  if [ -f "$f" ]; then
+    while IFS= read -r line; do
+      case $line in
+        "dirty "*) dirty=" \033[33m*${line#dirty } uncommitted\033[0m" ;;
+        "behind "*) behind=${line#behind } ;;
+        "ahead "*) ahead=${line#ahead } ;;
+        "stack "*) stack=${line#stack } ;;
+        *) rest="${rest}      ${line}
+" ;;
+      esac
+    done < "$f"
+  fi
+  printf '  \033[1m%s\033[0m  %s%b\n' "$repo" "${branch:-?}" "$dirty"
+
+  # The PR block is several lines: title, checks, conflicts, review threads.
+  if [ -n "$branch" ]; then
+    cache_key "$repo-$branch"; f="$BAY_CACHE_DIR/pr/$REPLY"
+    if [ -s "$f" ]; then
+      while IFS= read -r line; do
+        [ -n "$line" ] || continue
+        case $line in
+          "checks: 0 failing"* | "checks: passing") printf '    \033[32m%s\033[0m\n' "$line" ;;
+          "PR #"*"(merged)"*) printf '    \033[35m%s\033[0m\n' "$line" ;;
+          "checks: "*failing* | "conflicts"* | *"unresolved review"*) printf '    \033[31m%s\033[0m\n' "$line" ;;
+          *) printf '    \033[36m%s\033[0m\n' "$line" ;;
+        esac
+      done < "$f"
+    fi
+  fi
+
+  [ -n "$stack" ] && printf '    \033[36m⧉ graphite stack %s\033[0m\n' "$stack"
+  case $ahead in
+    "") ;;
+    0) printf '    nothing committed yet\n' ;;
+    1) printf '    1 commit ahead of main\n' ;;
+    *) printf '    %s commits ahead of main\n' "$ahead" ;;
+  esac
+  [ -n "$behind" ] && printf '    \033[33m%s behind main\033[0m\n' "$behind"
+  [ -n "$rest" ] && printf '%s' "$rest"
+  return 0
+}
+
 cmd_preview() {
-  local name=${1:-} now wins label state since wt dirty
+  local name=${1:-} now wins label state since wt
   [ -n "$name" ] || return 0
 
   # One call, and its failure is also the "no such session" answer.
@@ -581,19 +1179,20 @@ EOF
     printf '\n'
   fi
 
+  local skey
+  cache_key "$name"; skey=$REPLY
+  cache_read "$BAY_CACHE_DIR/ask/$skey"
+  [ -n "$REPLY" ] && printf '\033[1mfirst ask\033[0m\n  %s\n\n' "$REPLY"
+
   if [ -d "$WS_ROOT/$name" ]; then
     printf '\033[1mrepos\033[0m\n'
     for wt in "$WS_ROOT/$name"/*/; do
       [ -e "$wt.git" ] || continue
-      wt=${wt%/}
-      dirty=""
-      [ -n "$(git --no-optional-locks -C "$wt" status --porcelain 2>/dev/null)" ] && dirty=" *dirty"
-      branch_of "$wt"
-      printf '  %-16s %s%s\n' "${wt##*/}" "$REPLY" "$dirty"
+      preview_repo "$wt"
     done
   elif [ -e "$DEV_ROOT/$name/.git" ]; then
-    branch_of "$DEV_ROOT/$name"
-    printf '\033[1mrepo\033[0m\n  %s  %s\n' "$name" "$REPLY"
+    printf '\033[1mrepo\033[0m\n'
+    preview_repo "$DEV_ROOT/$name/"
   fi
 }
 
@@ -602,8 +1201,8 @@ EOF
 cmd_new() {
   local name repos
   printf 'feature name: '
-  read -r name || return 0
-  [ -n "$name" ] || return 0
+  read -r name || return 2
+  [ -n "$name" ] || return 2
   case "$name" in
     *[!a-zA-Z0-9._-]*) die "use letters, digits, dot, dash, underscore only" ;;
   esac
@@ -611,46 +1210,175 @@ cmd_new() {
   has_session "$name" && die "session $name already exists"
 
   [ -n "$WS_BIN" ] || die "cannot find the ws script"
-  repos=$("$WS_BIN" repos | fzf --multi --prompt="repos for $name (tab to multi-select)> ") || return 0
-  [ -n "$repos" ] || return 0
+  repos=$("$WS_BIN" repos | fzf --multi --prompt="repos for $name (tab to multi-select)> ") || return 2
+  [ -n "$repos" ] || return 2
 
   mkdir -p "$WS_ROOT/$name"
   create_session "$name" "$WS_ROOT/$name"
+  local shell_pane
+  shell_pane=$(tmux display-message -p -t "=$name:2" '#{pane_id}')
+  # Tells `bay open`, which `ws new` calls at the end, that this pane is
+  # busy building and cds on its own.
+  tmux set-option -w -t "$shell_pane" @bay_building on
 
-  # The command runs in a fresh shell, which does not inherit our environment.
-  # Pass non-default config paths through so they survive the hop.
-  local envpfx=""
-  [ "$WS_CONFIG" != "$HOME/.config/ws/config.sh" ] && envpfx="WS_CONFIG='$WS_CONFIG' "
-  [ "$BAY_CONFIG" != "$HOME/.config/bay/config.sh" ] && envpfx="${envpfx}BAY_CONFIG='$BAY_CONFIG' "
-
+  # Run `ws new` as the pane's own command, not as keys typed into the shell
+  # tmux just started. Keys that reach a shell still reading its rc files are
+  # echoed raw by the tty and again by the line editor, and any terminal
+  # reply that arrives meanwhile joins the same input queue as garbage.
+  # respawn-pane replaces that shell: ws runs at once and prints its log,
+  # then the pane cds to the directory the session uses and becomes a login
+  # shell, the way tmux would have started one. Nothing is ever typed.
+  #
+  # The commands run in a fresh environment. Pass non-default config paths
+  # through; the shell that follows inherits none of it.
+  local cfg="" shell cmd
+  [ "$WS_CONFIG" != "$HOME/.config/ws/config.sh" ] && cfg="WS_CONFIG='$WS_CONFIG' "
+  [ "$BAY_CONFIG" != "$HOME/.config/bay/config.sh" ] && cfg="${cfg}BAY_CONFIG='$BAY_CONFIG' "
+  shell=$(tmux show-options -gv default-shell 2>/dev/null) || shell=""
+  [ -n "$shell" ] || shell=${SHELL:-/bin/sh}
   # `ws new` calls `bay open` when it finishes, which adds the other windows.
-  tmux send-keys -t "=$name:2" "${envpfx}$WS_BIN new $name $(echo "$repos" | tr '\n' ' ')" C-m
+  cmd="${cfg}'$WS_BIN' new '$name' $(echo "$repos" | tr '\n' ' ')"
+  cmd="$cmd; r=\$(${cfg}'$BAY_SELF' --root '$name' 2>/dev/null) && cd \"\$r\"; exec '$shell' -l"
+  tmux respawn-pane -k -t "$shell_pane" -c "$WS_ROOT/$name" "$cmd"
   focus "$name"
 }
 
-cmd_done() {
-  local name=${1:-}
-  [ -n "$name" ] || return 0
-  [ -d "$WS_ROOT/$name" ] || die "$name is not a workspace"
-  printf 'tear down %s — remove worktrees and session? [y/N] ' "$name"
-  local reply
-  read -r reply || return 0
-  case "$reply" in
-    y | Y) ;;
-    *) return 0 ;;
+# The hub's C-t, run by fzf's execute() so it has the terminal. A build
+# that went through leaves you looking at the new session, so the hub over
+# it must go: execute() cannot end fzf, but fzf takes actions on the port it
+# listens on, and an abort posted here runs the moment we return. A cancel
+# goes straight back to the hub; an error holds its message on screen first.
+cmd_new_prompt() {
+  local rc=0
+  ( cmd_new ) || rc=$?
+  case "$rc" in
+    0)
+      if [ -n "${FZF_PORT:-}" ] && command -v curl >/dev/null 2>&1; then
+        curl -s -XPOST "http://localhost:$FZF_PORT" -d abort >/dev/null 2>&1 || true
+      fi ;;
+    2) ;;
+    *)
+      printf '\npress enter to continue '
+      read -r _ || true ;;
   esac
-  [ -n "$WS_BIN" ] || die "cannot find the ws script"
-  "$WS_BIN" done "$name"
+  return 0
+}
+
+# Tear-downs run detached. Removing worktrees and their node_modules can
+# take a while, and the hub should not hold you for it. A <name>.run file in
+# the cache says one is under way and collects its log; if the job fails the
+# log becomes <name>.failed, the row says so, and C-d on it shows the log and
+# offers another go. Both are read by cmd_rows with builtins only.
+done_log() { REPLY="$BAY_CACHE_DIR/done/$1"; }
+
+# A .run older than this is a job that died with its server, not one still
+# working.
+DONE_STALE=1800
+
+# Sets REPLY: "" | running | failed
+teardown_state() {
+  local log
+  done_log "$1"; log=$REPLY
+  REPLY=""
+  if [ -f "$log.run" ]; then
+    if cache_fresh "$log.run" "$DONE_STALE"; then REPLY=running; return 0; fi
+    mv -f "$log.run" "$log.failed" 2>/dev/null || true
+  fi
+  [ -f "$log.failed" ] && REPLY=failed
+  return 0
+}
+
+pause() {
   printf '\npress enter to continue '
   read -r _ || true
 }
 
+# A line on every attached client, gone after three seconds.
+toast() {
+  local c
+  for c in $(tmux list-clients -F '#{client_name}' 2>/dev/null); do
+    tmux display-message -c "$c" -d 3000 "$1" 2>/dev/null || true
+  done
+}
+
+cmd_done() {
+  local name=${1:-} reply force="" log cfg=""
+  [ -n "$name" ] || return 0
+  [ -d "$WS_ROOT/$name" ] || die "$name is not a workspace"
+  [ -n "$WS_BIN" ] || die "cannot find the ws script"
+  mkdir -p "$BAY_CACHE_DIR/done"
+  done_log "$name"; log=$REPLY
+
+  teardown_state "$name"
+  case $REPLY in
+    running)
+      printf 'tear down of %s is still running\n' "$name"
+      pause
+      return 0 ;;
+    failed)
+      printf 'the last tear down of %s failed:\n\n' "$name"
+      cat "$log.failed"
+      printf '\n' ;;
+  esac
+
+  # `ws done` refuses while a worktree has uncommitted changes. Ask that
+  # here, where a question can still be put, and offer the way out ws
+  # names, spelled out, because it throws the work away.
+  if ! "$WS_BIN" done --check "$name"; then
+    printf '\ndiscard those changes and remove %s anyway? [y/N] ' "$name"
+    read -r reply || return 0
+    case "$reply" in y | Y) force="--force" ;; *) return 0 ;; esac
+  else
+    printf 'tear down %s — remove worktrees and session? [y/N] ' "$name"
+    read -r reply || return 0
+    case "$reply" in y | Y) ;; *) return 0 ;; esac
+  fi
+
+  rm -f "$log.failed"
+  : > "$log.run"
+  leave_if_current "$name"
+  # run-shell -b: the job lives in the tmux server, so neither closing the
+  # hub nor the session going away under it ends the removal.
+  [ "$WS_CONFIG" != "$HOME/.config/ws/config.sh" ] && cfg="WS_CONFIG='$WS_CONFIG' "
+  [ "$BAY_CONFIG" != "$HOME/.config/bay/config.sh" ] && cfg="${cfg}BAY_CONFIG='$BAY_CONFIG' "
+  tmux run-shell -b "${cfg}'$BAY_SELF' --done-job '$name' $force"
+}
+
+# The detached half of cmd_done.
+cmd_done_job() {
+  local name=${1:-} force=${2:-} log
+  [ -n "$name" ] || return 0
+  done_log "$name"; log=$REPLY
+  # shellcheck disable=SC2086
+  if "$WS_BIN" done "$name" $force > "$log.run" 2>&1; then
+    rm -f "$log.run"
+    toast "#[fg=green]✓ $name#[default] torn down"
+  else
+    mv -f "$log.run" "$log.failed"
+    toast "#[fg=red,bold]✗ $name#[default] tear down failed · C-d on its row shows why"
+  fi
+}
+
+# The hub's C-d. A subshell, like cmd_rename_prompt, so a die() in the checks
+# above holds its message on screen instead of ending us under fzf.
+cmd_done_prompt() {
+  if ! ( cmd_done "$@" ); then
+    pause
+  fi
+}
+
 cmd_hub() {
   command -v fzf >/dev/null || die "fzf is required for the hub"
-  local self=$BAY_SELF picked
-  # No --sync and no cursor nudge: row one is already the session you want,
-  # because the one you are in is named in the header instead of listed.
+  local self=$BAY_SELF picked here="" nudge=""
+  # Inside tmux the first two rows are you and the rule under you, so the
+  # cursor starts on row three: the session you were in before this one.
+  # --sync makes pos() wait for the rows to be in; they take ~50ms.
+  here_session; here=$REPLY
+  # The rows fzf reloads are a fresh process each time; hand them the answer.
+  [ -n "$here" ] && export BAY_HERE=$here && nudge="pos(3)+"
+  # shellcheck disable=SC2086
   picked=$(cmd_rows | fzf \
+    --sync \
     --delimiter="$TAB" \
     --with-nth=2 \
     --ansi \
@@ -661,18 +1389,20 @@ cmd_hub() {
     --listen \
     --preview-window=right,45%,border-left \
     --bind="focus:preview($self --preview {1})" \
-    --bind="start:execute-silent($self --tick \$FZF_PORT &)" \
+    --bind="start:${nudge}execute-silent($self --tick \$FZF_PORT & $self --refresh &)" \
     --bind='ctrl-n:down,ctrl-p:up' \
-    --bind="ctrl-r:reload($self --rows)" \
-    --bind="ctrl-t:execute($self --new)+reload($self --rows)" \
-    --bind="ctrl-e:execute($self --rename {1})+reload($self --rows)" \
-    --bind="ctrl-x:execute-silent($self kill {1})+reload($self --rows)" \
-    --bind="ctrl-d:execute($self --done {1})+reload($self --rows)") || return 0
+    --bind="ctrl-r:reload-sync($self --rows)" \
+    --bind="ctrl-t:execute($self --new)" \
+    --bind="ctrl-e:execute($self --rename {1})+reload-sync($self --rows)" \
+    --bind="ctrl-x:execute-silent($self kill {1})+reload-sync($self --rows)" \
+    --bind="ctrl-d:execute($self --done {1})+reload-sync($self --rows)") || return 0
 
   [ -n "$picked" ] || return 0
   local name
   name=$(printf '%s' "$picked" | cut -f1)
   [ -n "$name" ] || return 0
+  # Enter on your own row: nowhere to go, so just close.
+  [ "$name" = "$here" ] && return 0
 
   # A session that is not a workspace or repo: just switch to it.
   if has_session "$name" && [ ! -d "$WS_ROOT/$name" ] && ! root_for "$name" >/dev/null 2>&1; then
@@ -690,10 +1420,13 @@ case "${1:-hub}" in
   --rows) shift; cmd_rows "$@" ;;   # internal, used by fzf
   --header) cmd_header ;;           # internal
   --tick) shift; cmd_tick "$@" ;;   # internal, drives the spinner
+  --refresh) cmd_refresh ;;         # internal, fills the preview caches
   --preview) shift; cmd_preview "$@" ;;
-  --new) cmd_new ;;
+  --new) cmd_new_prompt ;;
+  --root) shift; root_for "${1:-}" ;; # internal, for the pane command cmd_new starts
   --rename) shift; cmd_rename_prompt "$@" ;;
-  --done) shift; cmd_done "$@" ;;
+  --done) shift; cmd_done_prompt "$@" ;;
+  --done-job) shift; cmd_done_job "$@" ;; # internal, the detached half of C-d
   # The comment block at the top, however long it grows.
   help | -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0" ;;
   *) die "unknown command: $1 (try: bay help)" ;;

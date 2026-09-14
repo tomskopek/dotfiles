@@ -12,6 +12,7 @@
 #   ws add [repo...]          add repos to the workspace you're currently inside
 #   ws rename <old> <new>     rename the workspace dir and re-link its worktrees
 #   ws done [name] [--force]  remove worktrees + workspace dir (branches survive)
+#                             --check only runs the uncommitted-changes check
 #   ws list|ls                workspaces, their repos, branches, dirty state
 #
 # Renaming moves the directory and repairs each worktree's registration. It
@@ -263,10 +264,11 @@ cmd_rename() {
 }
 
 cmd_done() {
-  local ws="" force=0 arg
+  local ws="" force=0 check=0 arg
   for arg in "$@"; do
     case "$arg" in
       --force) force=1 ;;
+      --check) check=1 ;;
       *) ws=$arg ;;
     esac
   done
@@ -288,6 +290,9 @@ cmd_done() {
       die "$(basename "$wt") has uncommitted changes — commit/stash them, or ws done --force"
     fi
   done
+  # --check: the answer was the check itself. bay asks it up front, so it can
+  # still put the question to you before the removal runs detached.
+  [ "$check" -eq 1 ] && return 0
 
   local force_flag=""
   [ "$force" -eq 1 ] && force_flag="--force"
