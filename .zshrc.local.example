@@ -1,0 +1,10 @@
+# Example ~/.zshrc.local — copy to ~/.zshrc.local and edit.
+#
+# ~/.zshrc sources this file at the end if it exists. It is deliberately not
+# in this repo: the repo is public, so anything tied to an employer, a client,
+# a private host or a credential path belongs here instead.
+#
+# Because it loads last, it can override anything the shared config set.
+
+# alias work='cd ~/dev/some-private-repo'
+# export SOME_INTERNAL_CA_CERTS="$HOME/path/to/rootCA.pem"
