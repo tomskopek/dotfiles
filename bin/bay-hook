@@ -12,6 +12,12 @@
 #   wait  the agent is blocked on you (permission, or an idle prompt)
 #   done  the agent finished its turn, the answer is waiting
 #
+# `bay snooze` sets @bay_snoozed on the session, the epoch second you set it
+# aside. A snoozed session's states are still recorded, but not announced,
+# and `status`, `list` and `next` skip it. A permission or elicitation prompt
+# wakes it: the flag comes off and the alert goes out as usual. The idle
+# prompt does not; it only says the agent is done.
+#
 # Commands
 #   bay-hook event            read a Claude Code hook payload on stdin
 #   bay-hook status           status-line summary; also clears seen windows
@@ -79,12 +85,13 @@ badge() {
 }
 
 # Every window, flagged or not: window id, session, index, state, since,
-# whether it is the active window, and whether its session has a client.
-# Callers skip the unflagged rows themselves -- an awk here would be a second
-# process, and the status line runs this twice a second on every client.
+# whether it is the active window, whether its session has a client, and the
+# session's snooze stamp. Callers skip the unflagged rows themselves -- an awk
+# here would be a second process, and the status line runs this twice a
+# second on every client.
 flagged() {
   tmux list-windows -a -F \
-    '#{window_id}|#{session_name}|#{window_index}|#{@bay_state}|#{@bay_since}|#{window_active}|#{session_attached}' \
+    '#{window_id}|#{session_name}|#{window_index}|#{@bay_state}|#{@bay_since}|#{window_active}|#{session_attached}|#{@bay_snoozed}' \
     2>/dev/null
 }
 
@@ -146,13 +153,13 @@ announce() {
 # One Claude Code hook payload on stdin. Never fail: a non-zero exit here is
 # noise in the agent's transcript.
 cmd_event() {
-  local payload event cwd pane state prev session active attached
+  local payload event cwd pane state prev session active attached kind="" zz="" woke=""
   payload=$(cat 2>/dev/null)
   event=$(json_get "$payload" hook_event_name)
   cwd=$(json_get "$payload" cwd)
 
   case "$event" in
-    Notification) state=wait ;;
+    Notification) state=wait; kind=$(json_get "$payload" notification_type) ;;
     Stop) state=done ;;
     UserPromptSubmit | PreCompact) state=busy ;;
     SessionStart | SessionEnd) state=clear ;;
@@ -166,12 +173,21 @@ cmd_event() {
     exit 0
   fi
 
-  prev=$(tmux display-message -p -t "$pane" '#{@bay_state}' 2>/dev/null)
-  [ "$prev" = "$state" ] && exit 0
-
-  IFS='|' read -r session active attached < <(
-    tmux display-message -p -t "$pane" '#{session_name}|#{window_active}|#{session_attached}' 2>/dev/null
+  IFS='|' read -r prev session active attached zz < <(
+    tmux display-message -p -t "$pane" '#{@bay_state}|#{session_name}|#{window_active}|#{session_attached}|#{@bay_snoozed}' 2>/dev/null
   )
+
+  # A snoozed session wakes for a question only you can answer: a permission
+  # or elicitation prompt. Not for the idle prompt, which follows a minute
+  # after every turn ends and would end every snooze a minute after the
+  # agent went quiet. Before the repeat test below, on purpose: a fresh
+  # question in a window already marked wait must still wake it.
+  if [ -n "$zz" ] && [ "$state" = wait ] && [ "$kind" != idle_prompt ]; then
+    tmux set-option -u -t "=$session:" @bay_snoozed 2>/dev/null
+    zz=""; woke=1
+  fi
+
+  [ "$prev" = "$state" ] && [ -z "$woke" ] && exit 0
 
   # You are looking straight at it, so there is nothing to alert you about.
   # This applies to wait and done only. `busy` is not an alert, it is status:
@@ -185,6 +201,8 @@ cmd_event() {
   fi
 
   set_state "$pane" "$state" || exit 0
+  # Set aside means not announced. What it did still shows in its row.
+  [ -n "$zz" ] && exit 0
   alerts_on_for "$state" && announce "$session" "$state"
   exit 0
 }
@@ -192,8 +210,8 @@ cmd_event() {
 # Drop the flag on any window you are now looking at. Called from the status
 # line, so switching to a session clears it within one status interval.
 cmd_sweep() {
-  local wid session idx state since active attached
-  while IFS='|' read -r wid session idx state since active attached; do
+  local wid session idx state since active attached zz
+  while IFS='|' read -r wid session idx state since active attached zz; do
     case $state in wait | done) ;; *) continue ;; esac
     [ "$active" = "1" ] || continue
     [ "${attached:-0}" != "0" ] || continue
@@ -203,8 +221,9 @@ cmd_sweep() {
 
 # Flagged windows, most urgent first: "state session index since".
 cmd_list() {
-  local wid session idx state since active attached rank
-  while IFS='|' read -r wid session idx state since active attached; do
+  local wid session idx state since active attached zz rank
+  while IFS='|' read -r wid session idx state since active attached zz; do
+    [ -n "$zz" ] && continue
     case "$state" in wait) rank=3 ;; done) rank=2 ;; *) continue ;; esac
     printf '%s %s %s %s %s\n' "$rank" "$state" "$session" "$idx" "${since:-0}"
   done < <(flagged) | sort -k1,1nr -k5,5n | cut -d' ' -f2-
@@ -213,14 +232,17 @@ cmd_list() {
 # Sweep and summarise in a single pass over one tmux call. This runs on every
 # status refresh, so it does no more work than that.
 cmd_status() {
-  local wid session idx state since active attached
+  local wid session idx state since active attached zz
   local waits=" " dones=" " out=""
-  while IFS='|' read -r wid session idx state since active attached; do
+  while IFS='|' read -r wid session idx state since active attached zz; do
     case $state in wait | done) ;; *) continue ;; esac
     if [ "$active" = "1" ] && [ "${attached:-0}" != "0" ]; then
       clear_state "$wid"
       continue
     fi
+    # Snoozed: recorded, not named. A permission prompt has already taken
+    # the flag off by the time it would matter here.
+    [ -n "$zz" ] && continue
     case "$state" in
       wait) case "$waits" in *" $session "*) ;; *) waits="$waits$session " ;; esac ;;
       done) case "$dones" in *" $session "*) ;; *) dones="$dones$session " ;; esac ;;

@@ -8,9 +8,12 @@
 #
 #   bay              open the hub (bind this to a key; see tmux.conf)
 #                    keys: enter switch · C-t new · C-e rename · C-o note
-#                          C-x kill · C-d done · C-n / C-p move · C-r reload
+#                          C-z snooze · C-x kill · C-d done · C-n / C-p move
+#                          C-r reload
 #   bay open <name>  create or complete the session, then switch to it
 #   bay kill <name>  kill the session, keep the files
+#   bay snooze <name>        set a live session aside: its row drops below the
+#   bay wake <name>          others, dimmed, and the status line stops naming it
 #   bay rename <old> <new>   rename a plain session (a workspace: see ws rename)
 #   bay note <name> [text]   set a feature's note in one line, or open it in
 #                            your editor; it heads the preview until the
@@ -23,13 +26,27 @@
 # row, to rename, kill or tear it down without leaving. Nothing an agent does
 # reorders a row: what it is doing shows in the mark, from `bay-hook`.
 #
-#   🔔 blocked on you   ✅ finished   ◐◓◑◒ working   ● idle   ○ no session
+#   🔔 blocked on you   ✅ finished   ◐◓◑◒ working   ● idle
+#   💤 snoozed          ○ no session
+#
+# A session you are not ready to look at, but do not want to kill, can be
+# snoozed: C-z on its row, or `bay snooze <name>`. Its row drops below the
+# live ones, dimmed and marked 💤, and the status line stops naming it. The
+# agent keeps working; what it does is still recorded in the row, just not
+# announced. It stays snoozed until you wake it (C-z again, or `bay wake`),
+# or until the agent asks you for something: a permission prompt wakes a
+# snoozed session, because that is a question only you can answer. The idle
+# prompt Claude Code raises a minute after a turn ends does not, because it
+# only says the agent is done, and done is what a snoozed agent may be.
+# Switching to a snoozed session does not wake it either; looking is not
+# deciding.
 #
 # The working mark spins. fzf has no timer, so `bay --tick` posts a frame to
 # the port fzf opens with --listen; it stops the moment the hub closes, and
 # skips the redraw entirely while no agent is working.
 #
 # Press prefix + b (see tmux.conf) to jump straight to whatever is blocked.
+# Snoozed sessions are skipped.
 #
 # Each session gets four windows, always at the same index:
 #   0 claude   runs the agent          2 sh    plain shell for git, curl, ...
@@ -291,10 +308,15 @@ spin_mark() {
 }
 
 # True when any agent is working, so the spinner has something to spin for.
+# A snoozed session shows 💤 whatever its agent does, so it does not count.
 any_busy() {
-  case "$(tmux list-windows -a -F '#{@bay_state}' 2>/dev/null)" in
-    *busy*) return 0 ;;
-  esac
+  local dump state zz
+  dump=$(tmux list-windows -a -F '#{@bay_state}|#{@bay_snoozed}' 2>/dev/null) || dump=""
+  while IFS='|' read -r state zz; do
+    [ "$state" = busy ] && [ -z "$zz" ] && return 0
+  done <<EOF
+$dump
+EOF
   # A tear-down under way counts too: its row should leave when it is done.
   local f
   for f in "$BAY_CACHE_DIR"/done/*.run; do
@@ -630,13 +652,13 @@ pr_cell() {
 }
 
 cmd_header() {
-  printf 'enter switch · C-t new · C-e rename · C-o note · C-x kill · C-d done · C-r reload'
+  printf 'enter switch · C-t new · C-e rename · C-o note · C-z snooze · C-x kill · C-d done · C-r reload'
 }
 
 cmd_rows() {
   local frame=${1:-0}
-  local now here="" dump live="" names="|"
-  local tag a b c d name last act wins mark word where age state tmp r
+  local now here="" dump live="" snoozed="" names="|"
+  local tag a b c d e name last act wins zz mark word where age state tmp r
   local wsess="" wrank=0 wstate="" wsince="" states=" " sessions="" list dir here_row="" out=""
   now=$(date +%s)
   here_session; here=$REPLY
@@ -647,18 +669,18 @@ cmd_rows() {
   # #{S:...} loops over sessions and #{W:...} over that session's windows, so
   # each W line below belongs to the S line above it.
   dump=$(tmux display-message -p '#{S:
-S|#{session_name}|#{session_last_attached}|#{session_activity}|#{session_windows}#{W:
+S|#{session_name}|#{session_last_attached}|#{session_activity}|#{session_windows}|#{@bay_snoozed}#{W:
 W|#{@bay_state}|#{@bay_since}}}' 2>/dev/null) || dump=""
 
   # Roll the window states up per session as we read, then look them up by
   # name out of one string. Bash 3.2 has no associative arrays.
-  while IFS='|' read -r tag a b c d; do
+  while IFS='|' read -r tag a b c d e; do
     case $tag in
       S)
         [ -n "$wsess" ] && states="$states$wsess=$wrank:$wstate:$wsince "
         wsess=$a; wrank=0; wstate=""; wsince=""
         names="$names$a|"
-        sessions="$sessions$a|$b|$c|$d
+        sessions="$sessions$a|$b|$c|$d|$e
 "
         ;;
       W)
@@ -675,7 +697,7 @@ EOF
   # you were before this one, and nothing an agent does moves a row. An agent
   # writing to its pane bumps session_activity constantly; ordering on that is
   # what made rows shuffle between openings.
-  while IFS='|' read -r name last act wins; do
+  while IFS='|' read -r name last act wins zz; do
     [ -n "$name" ] || continue
 
     if [ -d "$WS_ROOT/$name" ]; then
@@ -703,6 +725,12 @@ EOF
       busy) spin_mark "$frame"; mark=$REPLY; word='' ;;
       *)    mark='●  '; word=''; [ "$name" = "$here" ] && mark='◉  ' ;;
     esac
+    # Snoozed: the mark says so and the word keeps what the agent did. Your
+    # own row keeps its ◉ and says it in the word instead, so C-z there
+    # reads as the wake it is.
+    if [ -n "$zz" ]; then
+      if [ "$name" = "$here" ]; then word='snoozed'; else mark='💤 '; fi
+    fi
     # A tear-down in flight, or one that failed, outranks what the agent did.
     teardown_state "$name"
     case $REPLY in
@@ -724,6 +752,12 @@ EOF
       here_row=$REPLY
       continue
     fi
+    if [ -n "$zz" ]; then
+      row "$name" "$mark" "$word" "$REPLY" "$where" "$age" dim
+      snoozed="$snoozed$last|$REPLY
+"
+      continue
+    fi
     row "$name" "$mark" "$word" "$REPLY" "$where" "$age"
     live="$live$last|$REPLY
 "
@@ -741,6 +775,10 @@ $REPLY
 "
   fi
   [ -n "$live" ] && out="$out$(printf '%s' "$live" | sort -t'|' -k1,1nr | cut -d'|' -f2-)
+"
+  # Snoozed sessions under the live block, in the same order, dimmed: still
+  # yours, still running, just not asking for your eye.
+  [ -n "$snoozed" ] && out="$out$(printf '%s' "$snoozed" | sort -t'|' -k1,1nr | cut -d'|' -f2-)
 "
 
   # Then what has no session yet: dimmed and always last, so the live block
@@ -1167,7 +1205,7 @@ preview_repo() {
 }
 
 cmd_preview() {
-  local name=${1:-} now wins label state since wt
+  local name=${1:-} now wins label state since zz wt
   [ -n "$name" ] || return 0
 
   note_file "$name"
@@ -1179,12 +1217,18 @@ cmd_preview() {
 
   # One call, and its failure is also the "no such session" answer.
   wins=$(tmux list-windows -t "=$name" -F \
-    '  #{window_index} #{window_name}#{?window_active, (active),}|#{@bay_state}|#{@bay_since}' 2>/dev/null) || wins=""
+    '  #{window_index} #{window_name}#{?window_active, (active),}|#{@bay_state}|#{@bay_since}|#{@bay_snoozed}' 2>/dev/null) || wins=""
 
   if [ -n "$wins" ]; then
     now=$(date +%s)
+    # Every line ends in the session's snooze stamp; read it off the last.
+    zz=${wins##*|}
+    if [ -n "$zz" ]; then
+      human_idle "$((now - zz))"
+      printf '\033[1;35m💤 snoozed\033[0m %s ago · C-z wakes it\n\n' "$REPLY"
+    fi
     printf '\033[1mwindows\033[0m\n'
-    while IFS='|' read -r label state since; do
+    while IFS='|' read -r label state since zz; do
       if [ -n "$state" ]; then
         state_label "$state" "$((now - since))" ''
         printf '%-24s %s\n' "$label" "$REPLY"
@@ -1418,6 +1462,39 @@ cmd_note_prompt() {
   ( cmd_note "$1" ) || pause
 }
 
+# --- snooze ------------------------------------------------------------------
+# A snoozed session carries @bay_snoozed, the epoch second you set it aside,
+# as a session option: it lives and dies with the session and follows a
+# rename. bay-hook reads it too, to keep the session out of the status line
+# and to wake it when the agent asks for a permission. The target is spelled
+# "=name:" -- exact match, and the colon is what makes tmux 3.6 take a bare
+# session for a session option.
+
+cmd_snooze() {
+  local name=${1:-}
+  [ -n "$name" ] || die "usage: bay snooze <name>"
+  has_session "$name" || die "no session named $name"
+  tmux set-option -t "=$name:" @bay_snoozed "$(date +%s)"
+}
+
+cmd_wake() {
+  local name=${1:-}
+  [ -n "$name" ] || die "usage: bay wake <name>"
+  has_session "$name" || die "no session named $name"
+  tmux set-option -u -t "=$name:" @bay_snoozed 2>/dev/null || true
+}
+
+# The hub's C-z: a toggle. Nothing on the rule, or on a row with no session.
+cmd_snooze_toggle() {
+  local name=${1:-}
+  [ -n "$name" ] && has_session "$name" || return 0
+  if [ -n "$(tmux show-options -qv -t "=$name:" @bay_snoozed 2>/dev/null)" ]; then
+    cmd_wake "$name"
+  else
+    cmd_snooze "$name"
+  fi
+}
+
 cmd_hub() {
   command -v fzf >/dev/null || die "fzf is required for the hub"
   local self=$BAY_SELF picked here="" nudge=""
@@ -1446,6 +1523,7 @@ cmd_hub() {
     --bind="ctrl-t:execute($self --new)" \
     --bind="ctrl-e:execute($self --rename {1})+reload-sync($self --rows)" \
     --bind="ctrl-o:execute($self --note {1})+preview($self --preview {1})" \
+    --bind="ctrl-z:execute-silent($self --snooze {1})+reload-sync($self --rows)+preview($self --preview {1})" \
     --bind="ctrl-x:execute-silent($self kill {1})+reload-sync($self --rows)" \
     --bind="ctrl-d:execute($self --done {1})+reload-sync($self --rows)") || return 0
 
@@ -1470,6 +1548,8 @@ case "${1:-hub}" in
   kill) shift; cmd_kill "$@" ;;
   rename | mv) shift; cmd_rename "$@" ;;
   note) shift; cmd_note "$@" ;;
+  snooze) shift; cmd_snooze "$@" ;;
+  wake) shift; cmd_wake "$@" ;;
   --rows) shift; cmd_rows "$@" ;;   # internal, used by fzf
   --header) cmd_header ;;           # internal
   --tick) shift; cmd_tick "$@" ;;   # internal, drives the spinner
@@ -1479,6 +1559,7 @@ case "${1:-hub}" in
   --root) shift; root_for "${1:-}" ;; # internal, for the pane command cmd_new starts
   --rename) shift; cmd_rename_prompt "$@" ;;
   --note) shift; cmd_note_prompt "$@" ;;
+  --snooze) shift; cmd_snooze_toggle "$@" ;; # internal, the hub's C-z
   --done) shift; cmd_done_prompt "$@" ;;
   --done-job) shift; cmd_done_job "$@" ;; # internal, the detached half of C-d
   # The comment block at the top, however long it grows.
