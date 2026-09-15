@@ -7,11 +7,14 @@
 # down a feature.
 #
 #   bay              open the hub (bind this to a key; see tmux.conf)
-#                    keys: enter switch · C-t new · C-e rename · C-x kill
-#                          C-d done · C-n / C-p move down / up · C-r reload
+#                    keys: enter switch · C-t new · C-e rename · C-o note
+#                          C-x kill · C-d done · C-n / C-p move · C-r reload
 #   bay open <name>  create or complete the session, then switch to it
 #   bay kill <name>  kill the session, keep the files
 #   bay rename <old> <new>   rename a plain session (a workspace: see ws rename)
+#   bay note <name> [text]   set a feature's note in one line, or open it in
+#                            your editor; it heads the preview until the
+#                            feature is torn down
 #
 # The hub is a switcher, so it behaves like one. The session you are in is
 # pinned on top, marked ◉ and set apart by a rule, and the live sessions
@@ -72,6 +75,9 @@ BAY_SPIN_CAP="${BAY_SPIN_CAP:-900}"
 # only reads them. Seconds a PR lookup stays fresh.
 BAY_CACHE_DIR="${BAY_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/bay}"
 BAY_PR_TTL="${BAY_PR_TTL:-600}"
+
+# Notes: one plain text file per feature, kept until it is torn down.
+BAY_NOTES_DIR="${BAY_NOTES_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bay/notes}"
 
 die() { printf '\033[1;31m[bay]\033[0m %s\n' "$*" >&2; exit 1; }
 
@@ -492,6 +498,11 @@ cmd_rename() {
   [ -e "$WS_ROOT/$new" ] && die "workspace $new already exists"
   is_repo "$new" && die "$new is already a repo in $DEV_ROOT"
   tmux rename-session -t "=$old" "$new"
+  local a
+  note_file "$old"; a=$REPLY
+  note_file "$new"
+  [ -f "$a" ] && mv -f "$a" "$REPLY"
+  return 0
 }
 
 # Ask for the new name, from the hub. Refuse before asking, not after, and
@@ -619,7 +630,7 @@ pr_cell() {
 }
 
 cmd_header() {
-  printf 'enter switch · C-t new · C-e rename · C-x kill · C-d done · C-r reload'
+  printf 'enter switch · C-t new · C-e rename · C-o note · C-x kill · C-d done · C-r reload'
 }
 
 cmd_rows() {
@@ -1159,6 +1170,13 @@ cmd_preview() {
   local name=${1:-} now wins label state since wt
   [ -n "$name" ] || return 0
 
+  note_file "$name"
+  if [ -s "$REPLY" ]; then
+    printf '\033[1;33mnote\033[0m\n'
+    head -20 "$REPLY" | sed 's/^/  /'
+    printf '\n'
+  fi
+
   # One call, and its failure is also the "no such session" answer.
   wins=$(tmux list-windows -t "=$name" -F \
     '  #{window_index} #{window_name}#{?window_active, (active),}|#{@bay_state}|#{@bay_since}' 2>/dev/null) || wins=""
@@ -1352,6 +1370,7 @@ cmd_done_job() {
   # shellcheck disable=SC2086
   if "$WS_BIN" done "$name" $force > "$log.run" 2>&1; then
     rm -f "$log.run"
+    note_file "$name"; rm -f "$REPLY"
     toast "#[fg=green]✓ $name#[default] torn down"
   else
     mv -f "$log.run" "$log.failed"
@@ -1365,6 +1384,38 @@ cmd_done_prompt() {
   if ! ( cmd_done "$@" ); then
     pause
   fi
+}
+
+# One note per feature, a plain text file named after it. It is the first
+# thing the preview shows, and it goes when the feature is torn down.
+note_file() {
+  cache_key "$1"
+  REPLY="$BAY_NOTES_DIR/$REPLY.md"
+}
+
+# bay note <name> [text]: with text, that is the note; without, the note
+# opens in your editor. An emptied note is no note.
+cmd_note() {
+  local name=${1:-} f ed
+  [ -n "$name" ] || die "usage: bay note <name> [text]"
+  shift
+  note_file "$name"; f=$REPLY
+  mkdir -p "$BAY_NOTES_DIR"
+  if [ $# -gt 0 ]; then
+    printf '%s\n' "$*" > "$f"
+    return 0
+  fi
+  ed=${VISUAL:-${EDITOR:-${BAY_EDITOR_CMD:-vi}}}
+  # shellcheck disable=SC2086
+  $ed "$f" || true
+  [ -s "$f" ] || rm -f "$f"
+  return 0
+}
+
+# The hub's C-o. Nothing on the rule; a die() holds its message on screen.
+cmd_note_prompt() {
+  [ -n "${1:-}" ] || return 0
+  ( cmd_note "$1" ) || pause
 }
 
 cmd_hub() {
@@ -1394,6 +1445,7 @@ cmd_hub() {
     --bind="ctrl-r:reload-sync($self --rows)" \
     --bind="ctrl-t:execute($self --new)" \
     --bind="ctrl-e:execute($self --rename {1})+reload-sync($self --rows)" \
+    --bind="ctrl-o:execute($self --note {1})+preview($self --preview {1})" \
     --bind="ctrl-x:execute-silent($self kill {1})+reload-sync($self --rows)" \
     --bind="ctrl-d:execute($self --done {1})+reload-sync($self --rows)") || return 0
 
@@ -1417,6 +1469,7 @@ case "${1:-hub}" in
   open) shift; cmd_open "$@" ;;
   kill) shift; cmd_kill "$@" ;;
   rename | mv) shift; cmd_rename "$@" ;;
+  note) shift; cmd_note "$@" ;;
   --rows) shift; cmd_rows "$@" ;;   # internal, used by fzf
   --header) cmd_header ;;           # internal
   --tick) shift; cmd_tick "$@" ;;   # internal, drives the spinner
@@ -1425,6 +1478,7 @@ case "${1:-hub}" in
   --new) cmd_new_prompt ;;
   --root) shift; root_for "${1:-}" ;; # internal, for the pane command cmd_new starts
   --rename) shift; cmd_rename_prompt "$@" ;;
+  --note) shift; cmd_note_prompt "$@" ;;
   --done) shift; cmd_done_prompt "$@" ;;
   --done-job) shift; cmd_done_job "$@" ;; # internal, the detached half of C-d
   # The comment block at the top, however long it grows.

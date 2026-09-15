@@ -61,6 +61,12 @@ BAY_SPIN_INTERVAL=0.2
 # Frames after which a hub left open stops ticking, so it cannot spin forever.
 BAY_SPIN_CAP=900
 
+# --- notes --------------------------------------------------------------------
+# `bay note <name> [text]`, or C-o in the hub, keeps one plain text note per
+# feature. It heads the preview and is removed when the feature is torn down.
+# Without text the note opens in $VISUAL, $EDITOR, or BAY_EDITOR_CMD.
+BAY_NOTES_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/bay/notes"
+
 # --- preview extras -----------------------------------------------------------
 # The preview reads cache files only. `bay --refresh` fills them, spawned
 # detached when the hub opens, so nothing here can ever slow a render: the
