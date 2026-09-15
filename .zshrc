@@ -95,6 +95,7 @@ chpwd  # run once on shell start, this is good for activating venv when creating
 export PATH="$HOME/dev/dotfiles/bin:$PATH"
 
 export EDITOR=nvim
+bindkey -e
 export VISUAL=nvim
 
 # Startup profiling, the way the old config did it: `zsht` reports where the
